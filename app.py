@@ -7,8 +7,11 @@ from routes.dashboard import dashboard_bp
 from routes.admin import admin_bp
 from routes.investments import investments_bp
 from routes.referrals import referrals_bp
-
+from routes.football       import football_bp
+from routes.contests       import contests_bp
+from routes.admin_football import admin_football_bp
 def create_app():
+    
     app = Flask(__name__)
     app.config.from_object(Config)
 
@@ -20,6 +23,9 @@ def create_app():
     app.register_blueprint(admin_bp,        url_prefix='/admin')
     app.register_blueprint(investments_bp,  url_prefix='/investments')
     app.register_blueprint(referrals_bp,    url_prefix='/referrals')
+    app.register_blueprint(football_bp,       url_prefix='/football')
+    app.register_blueprint(contests_bp,       url_prefix='/contests')
+    app.register_blueprint(admin_football_bp, url_prefix='/admin/football')
 
     @app.route('/')
     def index():
