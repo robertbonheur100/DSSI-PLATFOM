@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Register — DSSI{% endblock %}
+{% block body_class %}auth-page{% endblock %}
+{% block content %}
+<div class="auth-bg">
+  <div class="auth-glow"></div>
+  <div class="auth-card auth-card--wide">
+    <div class="auth-logo">
+      <div class="logo-mark">DSSI</div>
+      <p class="logo-sub">INVESTISMENT PLATFORM</p>
+    </div>
+    <h2 class="auth-title">Create Account</h2>
+    <p class="auth-subtitle">Start growing your crypto investments</p>
+
+    <form method="POST" action="{{ url_for('auth.register') }}" class="auth-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" name="username" placeholder="CryptoHero" required>
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" name="email" placeholder="you@example.com" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" name="password" placeholder="••••••••" required>
+        </div>
+        <div class="form-group">
+          <label>Confirm Password</label>
+          <input type="password" name="confirm_password" placeholder="••••••••" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Referral Code <span class="optional">(optional)</span></label>
+        <input type="text" name="ref_code" value="{{ ref_code }}" placeholder="Enter referral code">
+      </div>
+      <button type="submit" class="btn btn--primary btn--full">Create Account</button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+  </div>
+</div>
+{% endblock %}
