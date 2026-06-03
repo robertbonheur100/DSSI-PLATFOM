@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block title %}Referrals — DSSI{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark-sm">DSSI</span>
+      <span class="sidebar-brand">INVESTISMENT PLATFORM</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('dashboard.index') }}" class="nav-item">← Dashboard</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <h1 class="page-title">Referral Program</h1>
+    </header>
+
+    <div class="tab-section active" id="tab-referrals" style="display:flex;flex-direction:column;gap:1.25rem;padding:1.5rem;">
+
+      <div class="stats-grid">
+        <div class="stat-card stat-card--gold">
+          <div class="stat-icon">💸</div>
+          <div class="stat-body">
+            <p class="stat-label">Total Earned</p>
+            <p class="stat-value">${{ "%.2f"|format(total_earned) }}</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-body">
+            <p class="stat-label">Level 1 (5%)</p>
+            <p class="stat-value">{{ l1_refs|length }}</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔗</div>
+          <div class="stat-body">
+            <p class="stat-label">Level 2 (2%)</p>
+            <p class="stat-value">{{ l2_refs|length }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Your Referral Link</h3></div>
+        <div class="form-body">
+          <div class="form-group">
+            <label>Share this link to earn commissions automatically</label>
+            <div class="copy-row">
+              <input type="text" id="ref-link" value="{{ ref_link }}" readonly>
+              <button class="btn btn--primary" onclick="copyRefLink()">Copy</button>
+            </div>
+          </div>
+          <p class="ref-code-display">Your referral code: <strong>{{ profile.referral_code }}</strong></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Commission Structure</h3></div>
+        <div class="commission-grid">
+          <div class="commission-card">
+            <div class="commission-level">Level 1</div>
+            <div class="commission-rate">5%</div>
+            <p>On every deposit or investment by your direct referrals</p>
+          </div>
+          <div class="commission-card">
+            <div class="commission-level">Level 2</div>
+            <div class="commission-rate">2%</div>
+            <p>On every deposit or investment by your referrals' referrals</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Level 1 Referrals ({{ l1_refs|length }})</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Username</th><th>Email</th><th>Joined</th></tr></thead>
+            <tbody>
+            {% for r in l1_refs %}
+            <tr>
+              <td>{{ r.username }}</td><td>{{ r.email }}</td>
+              <td class="text-muted">{{ (r.created_at or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted">No Level 1 referrals yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Level 2 Referrals ({{ l2_refs|length }})</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Username</th><th>Email</th><th>Joined</th></tr></thead>
+            <tbody>
+            {% for r in l2_refs %}
+            <tr>
+              <td>{{ r.username }}</td><td>{{ r.email }}</td>
+              <td class="text-muted">{{ (r.created_at or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted">No Level 2 referrals yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Referral Earnings History</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Amount</th><th>Description</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for tx in ref_txs %}
+            <tr>
+              <td class="text-green">+${{ "%.2f"|format(tx.amount) }}</td>
+              <td>{{ tx.description }}</td>
+              <td class="text-muted">{{ (tx.created_at or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted">No referral earnings yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function copyRefLink() {
+  const input = document.getElementById('ref-link');
+  input.select();
+  navigator.clipboard.writeText(input.value).then(() => alert('Referral link copied!'));
+}
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+</script>
+{% endblock %}
