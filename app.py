@@ -26,6 +26,9 @@ def create_app():
     app.register_blueprint(football_bp,       url_prefix='/football')
     app.register_blueprint(contests_bp,       url_prefix='/contests')
     app.register_blueprint(admin_football_bp, url_prefix='/admin/football')
+    app.register_blueprint(football_bp)
+    
+    from routes.football import football_bp
 
     @app.route('/')
     def index():
