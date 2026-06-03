@@ -1,0 +1,544 @@
+{% extends 'base.html' %}
+{% block title %}Admin — DSSI{% endblock %}
+{% block body_class %}app-page admin-page{% endblock %}
+{% block content %}
+
+<div class="app-layout">
+  <aside class="sidebar sidebar--admin" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark-sm">DSSI</span>
+      <span class="sidebar-brand">Admin Panel</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-tab="overview">📊 Overview</a>
+      <a class="nav-item" data-tab="users">👥 Users</a>
+      <a class="nav-item" data-tab="deposits">
+        💰 Deposits
+        {% if pending_deposits %}<span class="badge">{{ pending_deposits|length }}</span>{% endif %}
+      </a>
+      <a class="nav-item" data-tab="withdrawals">
+        🏧 Withdrawals
+        {% if pending_withdrawals %}<span class="badge">{{ pending_withdrawals|length }}</span>{% endif %}
+      </a>
+      <a class="nav-item" data-tab="buy-requests">
+        📥 Buy Crypto
+        {% if pending_buys %}<span class="badge">{{ pending_buys|length }}</span>{% endif %}
+      </a>
+      <a class="nav-item" data-tab="sell-requests">
+        📤 Sell Crypto
+        {% if pending_sells %}<span class="badge">{{ pending_sells|length }}</span>{% endif %}
+      </a>
+      <a class="nav-item" data-tab="htg-withdrawals">
+        🪙 HTG Withdrawals
+        {% if pending_htg_wds %}<span class="badge">{{ pending_htg_wds|length }}</span>{% endif %}
+      </a>
+      <a class="nav-item" data-tab="exchange-rate">📊 Exchange Rate</a>
+      <a class="nav-item" data-tab="investments">📈 Investments</a>
+      <a class="nav-item" data-tab="transactions">📋 Transactions</a>
+      <a class="nav-item" data-tab="actions">🔒 Audit Log</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <h1 class="page-title" id="page-title">Overview</h1>
+      <div class="admin-badge">ADMIN</div>
+    </header>
+
+    {# ── OVERVIEW ── #}
+    <section class="tab-section active" id="tab-overview">
+      <div class="stats-grid">
+        <div class="stat-card stat-card--gold">
+          <div class="stat-icon">👥</div>
+          <div class="stat-body"><p class="stat-label">Total Users</p><p class="stat-value">{{ users|length }}</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-body"><p class="stat-label">Platform Balance</p><p class="stat-value">${{ "%.2f"|format(total_balance) }}</p></div>
+        </div>
+        <div class="stat-card stat-card--warn">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-body"><p class="stat-label">Pending Deposits</p><p class="stat-value">{{ pending_deposits|length }}</p></div>
+        </div>
+        <div class="stat-card stat-card--warn">
+          <div class="stat-icon">🏧</div>
+          <div class="stat-body"><p class="stat-label">Pending Withdrawals</p><p class="stat-value">{{ pending_withdrawals|length }}</p></div>
+        </div>
+        <div class="stat-card stat-card--warn">
+          <div class="stat-icon">📥</div>
+          <div class="stat-body"><p class="stat-label">Pending Buy Crypto</p><p class="stat-value">{{ pending_buys|length }}</p></div>
+        </div>
+        <div class="stat-card stat-card--warn">
+          <div class="stat-icon">📤</div>
+          <div class="stat-body"><p class="stat-label">Pending Sell Crypto</p><p class="stat-value">{{ pending_sells|length }}</p></div>
+        </div>
+        <div class="stat-card stat-card--warn">
+          <div class="stat-icon">🪙</div>
+          <div class="stat-body"><p class="stat-label">Pending HTG WDs</p><p class="stat-value">{{ pending_htg_wds|length }}</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📈</div>
+          <div class="stat-body"><p class="stat-label">Active Investments</p><p class="stat-value">{{ active_investments|length }}</p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-body"><p class="stat-label">HTG Rate</p><p class="stat-value" style="font-size:1rem">{{ "%.2f"|format(current_rate) }} <small style="font-size:0.4em;color:var(--text-2)">HTG/USDT</small></p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💸</div>
+          <div class="stat-body"><p class="stat-label">Invested Volume</p><p class="stat-value">${{ "%.2f"|format(invested_vol) }}</p></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Daily Profit Monitor</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>User</th><th>Plan</th><th>Amount</th><th>Daily</th><th>Earned</th><th>Last Paid</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for inv in investments %}
+            <tr>
+              <td>{{ user_map.get(inv.get('user_id'), '—') }}</td>
+              <td>{{ inv.get('plan_name','—') }}</td>
+              <td>${{ "%.2f"|format(inv.get('amount',0)) }}</td>
+              <td class="text-green">+${{ "%.2f"|format(inv.get('amount',0) * 0.02) }}</td>
+              <td>${{ "%.2f"|format(inv.get('total_earned') or 0) }}</td>
+              <td class="text-muted">{{ (inv.get('last_profit_date') or 'Never')[:10] }}</td>
+              <td><span class="status-badge status--{{ inv.get('status','') }}">{{ inv.get('status','').upper() }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted">No investments</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── USERS ── #}
+    <section class="tab-section" id="tab-users">
+      <div class="card">
+        <div class="card-header"><h3>Manual USDT Balance Adjustment</h3></div>
+        <form method="POST" action="{{ url_for('admin.adjust_balance') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Select User</label>
+              <select name="user_id" required>
+                <option value="">Choose user…</option>
+                {% for u in users %}
+                <option value="{{ u.id }}">{{ u.username }} — ${{ "%.2f"|format(u.get('balance') or 0) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Amount (+ add / − deduct)</label>
+              <input type="number" name="amount" step="0.01" placeholder="e.g. 50 or -20" required>
+            </div>
+            <div class="form-group">
+              <label>Reason</label>
+              <input type="text" name="reason" placeholder="Reason for adjustment">
+            </div>
+            <div class="form-group form-group--action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn--primary">Adjust USDT</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Manual HTG Balance Adjustment</h3></div>
+        <form method="POST" action="{{ url_for('admin.adjust_htg') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Select User</label>
+              <select name="user_id" required>
+                <option value="">Choose user…</option>
+                {% for u in users %}
+                <option value="{{ u.id }}">{{ u.username }} — {{ "%.2f"|format(u.get('balance_htg') or 0) }} HTG</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>HTG Amount (+ add / − deduct)</label>
+              <input type="number" name="amount_htg" step="0.01" placeholder="e.g. 500 or -200" required>
+            </div>
+            <div class="form-group">
+              <label>Reason</label>
+              <input type="text" name="reason" placeholder="Reason for adjustment">
+            </div>
+            <div class="form-group form-group--action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn--primary">Adjust HTG</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>All Users ({{ users|length }})</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Username</th><th>Email</th><th>USDT Balance</th><th>HTG Balance</th><th>Ref Code</th><th>Joined</th></tr></thead>
+            <tbody>
+            {% for u in users %}
+            <tr>
+              <td><strong>{{ u.get('username','—') }}</strong></td>
+              <td>{{ u.get('email','—') }}</td>
+              <td class="text-green">${{ "%.2f"|format(u.get('balance') or 0) }}</td>
+              <td style="color:#f59e0b">{{ "%.2f"|format(u.get('balance_htg') or 0) }} HTG</td>
+              <td class="text-mono">{{ u.get('referral_code','—') }}</td>
+              <td class="text-muted">{{ (u.get('created_at') or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted">No users</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── DEPOSITS ── #}
+    <section class="tab-section" id="tab-deposits">
+      <div class="card">
+        <div class="card-header"><h3>All Deposits</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>User</th><th>Amount</th><th>Network</th><th>Proof</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for d in deposits %}
+            {% set d_amt = "%.2f"|format(d.get('amount',0)) %}
+            <tr class="{{ 'row-pending' if d.get('status') == 'pending' else '' }}">
+              <td>{{ user_map.get(d.get('user_id'), '—') }}</td>
+              <td><strong>${{ d_amt }}</strong></td>
+              <td>{{ d.get('network','—') }}</td>
+              <td class="text-muted text-mono">{{ (d.get('proof_note') or '—')[:28] }}</td>
+              <td><span class="status-badge status--{{ d.get('status','') }}">{{ d.get('status','').upper() }}</span></td>
+              <td class="text-muted">{{ (d.get('created_at') or '')[:10] }}</td>
+              <td>
+                {% if d.get('status') == 'pending' %}
+                <div class="action-btns">
+                  <form method="POST" action="{{ url_for('admin.handle_deposit', deposit_id=d.id, action='approve') }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--success" onclick="return confirm('Approve ${{ d_amt }}?')">✓ Approve</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin.handle_deposit', deposit_id=d.id, action='reject') }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--danger" onclick="return confirm('Reject?')">✗ Reject</button>
+                  </form>
+                </div>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted">No deposits</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── WITHDRAWALS ── #}
+    <section class="tab-section" id="tab-withdrawals">
+      <div class="card">
+        <div class="card-header"><h3>All Withdrawals</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>User</th><th>Amount</th><th>Wallet</th><th>Network</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for w in withdrawals %}
+            {% set w_amt = "%.2f"|format(w.get('amount',0)) %}
+            <tr class="{{ 'row-pending' if w.get('status') == 'pending' else '' }}">
+              <td>{{ user_map.get(w.get('user_id'), '—') }}</td>
+              <td><strong>${{ w_amt }}</strong></td>
+              <td class="text-mono">{{ (w.get('wallet_address') or '—')[:18] }}…</td>
+              <td>{{ w.get('network','—') }}</td>
+              <td><span class="status-badge status--{{ w.get('status','') }}">{{ w.get('status','').upper() }}</span></td>
+              <td class="text-muted">{{ (w.get('created_at') or '')[:10] }}</td>
+              <td>
+                {% if w.get('status') == 'pending' %}
+                <div class="action-btns">
+                  <form method="POST" action="{{ url_for('admin.handle_withdrawal', wd_id=w.id, action='approve') }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--success" onclick="return confirm('Approve ${{ w_amt }}?')">✓ Approve</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin.handle_withdrawal', wd_id=w.id, action='reject') }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--danger" onclick="return confirm('Reject?')">✗ Reject</button>
+                  </form>
+                </div>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted">No withdrawals</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── BUY CRYPTO REQUESTS ── #}
+    <section class="tab-section" id="tab-buy-requests">
+      <div class="card">
+        <div class="card-header"><h3>Buy Crypto Requests (User pays HTG via NatCash)</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>User</th><th>HTG</th><th>≈ USDT</th><th>NatCash From</th><th>Reference</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for r in buy_requests %}
+            {% set r_htg = "%.2f"|format(r.get('amount_htg',0)) %}
+            <tr class="{{ 'row-pending' if r.get('status') == 'pending' else '' }}">
+              <td>{{ user_map.get(r.get('user_id'), '—') }}</td>
+              <td><strong>{{ r_htg }} HTG</strong></td>
+              <td class="text-muted">≈ ${{ "%.4f"|format(r.get('amount_htg',0) / current_rate) }}</td>
+              <td class="text-mono">{{ r.get('natcash_sender','—') }}</td>
+              <td class="text-muted">{{ (r.get('proof_note') or '—')[:25] }}</td>
+              <td><span class="status-badge status--{{ r.get('status','') }}">{{ r.get('status','').upper() }}</span></td>
+              <td class="text-muted">{{ (r.get('created_at') or '')[:10] }}</td>
+              <td>
+                {% if r.get('status') == 'pending' %}
+                <div class="action-btns">
+                  <form method="POST" action="{{ url_for('admin.handle_buy', req_id=r.id, action='approve') }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--success" onclick="return confirm('Approve {{ r_htg }} HTG?')">✓ Approve</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin.handle_buy', req_id=r.id, action='reject') }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--danger" onclick="return confirm('Reject?')">✗ Reject</button>
+                  </form>
+                </div>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center text-muted">No buy requests</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── SELL CRYPTO REQUESTS ── #}
+    <section class="tab-section" id="tab-sell-requests">
+      <div class="card">
+        <div class="card-header"><h3>Sell Crypto Requests (User sends USDT → gets HTG)</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>User</th><th>USDT</th><th>HTG Value</th><th>TX Hash</th><th>Network</th><th>NatCash To</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for r in sell_requests %}
+            {% set r_usdt = "%.4f"|format(r.get('amount_usdt',0)) %}
+            {% set r_htg  = "%.2f"|format(r.get('amount_usdt',0) * current_rate) %}
+            <tr class="{{ 'row-pending' if r.get('status') == 'pending' else '' }}">
+              <td>{{ user_map.get(r.get('user_id'), '—') }}</td>
+              <td><strong>${{ r_usdt }}</strong></td>
+              <td class="text-muted">{{ r_htg }} HTG</td>
+              <td class="text-mono text-muted">{{ (r.get('tx_hash') or '—')[:18] }}…</td>
+              <td>{{ r.get('network','—') }}</td>
+              <td class="text-mono">{{ r.get('natcash_receiver','—') }}</td>
+              <td><span class="status-badge status--{{ r.get('status','') }}">{{ r.get('status','').upper() }}</span></td>
+              <td class="text-muted">{{ (r.get('created_at') or '')[:10] }}</td>
+              <td>
+                {% if r.get('status') == 'pending' %}
+                <div class="action-btns">
+                  <form method="POST" action="{{ url_for('admin.handle_sell', req_id=r.id, action='approve') }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--success"
+                      onclick="return confirm('Approve — credit {{ r_htg }} HTG to user?')">✓ Approve</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin.handle_sell', req_id=r.id, action='reject') }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--danger" onclick="return confirm('Reject?')">✗ Reject</button>
+                  </form>
+                </div>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="9" class="text-center text-muted">No sell requests</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── HTG WITHDRAWALS ── #}
+    <section class="tab-section" id="tab-htg-withdrawals">
+      <div class="card">
+        <div class="card-header"><h3>HTG Withdrawal Requests (send to NatCash)</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>User</th><th>HTG Amount</th><th>NatCash Number</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for w in htg_wds %}
+            {% set w_htg = "%.2f"|format(w.get('amount_htg',0)) %}
+            {% set w_natcash = w.get('natcash_number','') %}
+            <tr class="{{ 'row-pending' if w.get('status') == 'pending' else '' }}">
+              <td>{{ user_map.get(w.get('user_id'), '—') }}</td>
+              <td><strong>{{ w_htg }} HTG</strong></td>
+              <td class="text-mono">{{ w_natcash }}</td>
+              <td><span class="status-badge status--{{ w.get('status','') }}">{{ w.get('status','').upper() }}</span></td>
+              <td class="text-muted">{{ (w.get('created_at') or '')[:10] }}</td>
+              <td>
+                {% if w.get('status') == 'pending' %}
+                <div class="action-btns">
+                  <form method="POST" action="{{ url_for('admin.handle_htg_withdrawal', wd_id=w.id, action='approve') }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--success"
+                      onclick="return confirm('Approve HTG WD — send {{ w_htg }} HTG to {{ w_natcash }}?')">✓ Approve</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin.handle_htg_withdrawal', wd_id=w.id, action='reject') }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--danger"
+                      onclick="return confirm('Reject and refund {{ w_htg }} HTG?')">✗ Reject</button>
+                  </form>
+                </div>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted">No HTG withdrawals</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── EXCHANGE RATE ── #}
+    <section class="tab-section" id="tab-exchange-rate">
+      <div class="card">
+        <div class="card-header"><h3>Set Exchange Rate (HTG per 1 USDT)</h3></div>
+        <form method="POST" action="{{ url_for('admin.set_rate') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>New Rate (HTG = 1 USDT)</label>
+              <input type="number" name="rate" step="0.01" min="1" value="{{ current_rate }}" required>
+            </div>
+            <div class="form-group form-group--action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn--primary">Update Rate</button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Rate History</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Rate (HTG/USDT)</th><th>Set By</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for r in rates %}
+            <tr>
+              <td><strong>{{ "%.2f"|format(r.get('rate',0)) }} HTG</strong></td>
+              <td>{{ r.get('set_by','admin') }}</td>
+              <td class="text-muted">{{ (r.get('created_at') or '')[:16] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted">No rate history</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── INVESTMENTS ── #}
+    <section class="tab-section" id="tab-investments">
+      <div class="card">
+        <div class="card-header"><h3>All Investment Plans</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>User</th><th>Plan</th><th>Amount</th><th>Daily</th><th>Earned</th><th>Start</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for inv in investments %}
+            <tr>
+              <td>{{ user_map.get(inv.get('user_id'), '—') }}</td>
+              <td>{{ inv.get('plan_name','—') }}</td>
+              <td>${{ "%.2f"|format(inv.get('amount',0)) }}</td>
+              <td class="text-green">+${{ "%.2f"|format(inv.get('amount',0) * 0.02) }}/day</td>
+              <td>${{ "%.2f"|format(inv.get('total_earned') or 0) }}</td>
+              <td class="text-muted">{{ (inv.get('start_date') or '')[:10] }}</td>
+              <td><span class="status-badge status--{{ inv.get('status','') }}">{{ inv.get('status','').upper() }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted">No investments</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── TRANSACTIONS ── #}
+    <section class="tab-section" id="tab-transactions">
+      <div class="card">
+        <div class="card-header"><h3>Transaction Log</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>User</th><th>Type</th><th>Amount</th><th>Description</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for tx in transactions %}
+            <tr>
+              <td>{{ user_map.get(tx.get('user_id'), '—') }}</td>
+              <td><span class="type-badge type--{{ tx.get('type','') }}">{{ tx.get('type','').replace('_',' ').title() }}</span></td>
+              <td class="{{ 'text-green' if tx.get('amount',0) > 0 else 'text-red' }}">${{ "%.2f"|format(tx.get('amount',0)|abs) }}</td>
+              <td>{{ (tx.get('description') or '—')[:55] }}</td>
+              <td><span class="status-badge status--{{ tx.get('status','') }}">{{ tx.get('status','').upper() }}</span></td>
+              <td class="text-muted">{{ (tx.get('created_at') or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted">No transactions</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── AUDIT LOG ── #}
+    <section class="tab-section" id="tab-actions">
+      <div class="card">
+        <div class="card-header"><h3>Admin Audit Log</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Action</th><th>Target</th><th>Details</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for a in actions %}
+            <tr>
+              <td><span class="type-badge">{{ a.get('action','').replace('_',' ').title() }}</span></td>
+              <td class="text-mono text-muted">{{ (a.get('target_id') or '—')[:16] }}</td>
+              <td>{{ a.get('details','—') }}</td>
+              <td class="text-muted">{{ (a.get('created_at') or '')[:16] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted">No actions logged</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-tab]').forEach(item => {
+  item.addEventListener('click', function(e) {
+    e.preventDefault();
+    const name = this.dataset.tab;
+    document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('[data-tab]').forEach(n => n.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    this.classList.add('active');
+    document.getElementById('page-title').textContent = this.textContent.trim().replace(/\d+/g,'').trim();
+  });
+});
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+</script>
+{% endblock %}
