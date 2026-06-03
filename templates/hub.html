@@ -1,0 +1,214 @@
+{# templates/football/hub.html #}
+{% extends 'base.html' %}
+{% block title %}Football Hub — DSSI{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+
+<div class="app-layout">
+
+  {# ── Sidebar ── #}
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark-sm">⚽</span>
+      <span class="sidebar-brand">Football Hub</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-tab="today">📅 Today</a>
+      <a class="nav-item" data-tab="tomorrow">🔜 Tomorrow</a>
+      <a class="nav-item" data-tab="results">✅ Results</a>
+      <a class="nav-item" data-tab="contests">🏆 Contests</a>
+      <a href="{{ url_for('football.standings') }}" class="nav-item">📊 Standings</a>
+      <a href="{{ url_for('football.leaderboard') }}" class="nav-item">🥇 Leaderboard</a>
+      <a href="{{ url_for('dashboard.index') }}" class="nav-item">← Dashboard</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <h1 class="page-title" id="page-title">Today's Matches</h1>
+    </header>
+
+    {# Flash messages #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert--{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    {# ── TODAY ── #}
+    <section class="tab-section active" id="tab-today">
+      <div class="section-intro">
+        <h2>📅 Matches Today</h2>
+        <p>All scheduled and live matches for today.</p>
+      </div>
+
+      {% if matches_today %}
+        <div class="match-grid">
+          {% for m in matches_today %}
+          <div class="match-card {{ 'match-card--live' if m.status == 'live' else '' }}">
+            {% if m.status == 'live' %}
+              <div class="live-badge">🔴 LIVE</div>
+            {% endif %}
+            <div class="match-league">{{ m.league }}</div>
+            <div class="match-teams">
+              <div class="team team--home">
+                {% if m.home_logo %}<img src="{{ m.home_logo }}" class="team-logo">{% endif %}
+                <span class="team-name">{{ m.home_team }}</span>
+              </div>
+              <div class="match-score">
+                {% if m.home_score is not none %}
+                  <span class="score">{{ m.home_score }} – {{ m.away_score }}</span>
+                {% else %}
+                  <span class="kick-off">{{ (m.match_time or '—')[:5] }}</span>
+                {% endif %}
+              </div>
+              <div class="team team--away">
+                {% if m.away_logo %}<img src="{{ m.away_logo }}" class="team-logo">{% endif %}
+                <span class="team-name">{{ m.away_team }}</span>
+              </div>
+            </div>
+            <div class="match-meta">
+              <span class="status-badge status--{{ m.status }}">{{ m.status.upper() }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state"><p>No matches scheduled today.</p></div>
+      {% endif %}
+    </section>
+
+    {# ── TOMORROW ── #}
+    <section class="tab-section" id="tab-tomorrow">
+      <div class="section-intro">
+        <h2>🔜 Tomorrow's Matches</h2>
+      </div>
+
+      {% if matches_tomorrow %}
+        <div class="match-grid">
+          {% for m in matches_tomorrow %}
+          <div class="match-card">
+            <div class="match-league">{{ m.league }}</div>
+            <div class="match-teams">
+              <div class="team team--home">
+                {% if m.home_logo %}<img src="{{ m.home_logo }}" class="team-logo">{% endif %}
+                <span class="team-name">{{ m.home_team }}</span>
+              </div>
+              <div class="match-score">
+                <span class="kick-off">{{ (m.match_time or 'TBD')[:5] }}</span>
+              </div>
+              <div class="team team--away">
+                {% if m.away_logo %}<img src="{{ m.away_logo }}" class="team-logo">{% endif %}
+                <span class="team-name">{{ m.away_team }}</span>
+              </div>
+            </div>
+            <div class="match-meta">
+              <span class="status-badge status--scheduled">UPCOMING</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state"><p>No matches scheduled for tomorrow.</p></div>
+      {% endif %}
+    </section>
+
+    {# ── RESULTS ── #}
+    <section class="tab-section" id="tab-results">
+      <div class="section-intro">
+        <h2>✅ Recent Results</h2>
+      </div>
+
+      {% if matches_finished %}
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>League</th>
+                  <th>Home</th>
+                  <th>Score</th>
+                  <th>Away</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for m in matches_finished %}
+              <tr>
+                <td class="text-muted">{{ m.league }}</td>
+                <td><strong>{{ m.home_team }}</strong></td>
+                <td class="text-center">
+                  <span class="final-score">{{ m.home_score }} – {{ m.away_score }}</span>
+                </td>
+                <td><strong>{{ m.away_team }}</strong></td>
+                <td class="text-muted">{{ (m.match_date or '')[:10] }}</td>
+              </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% else %}
+        <div class="empty-state"><p>No finished matches yet.</p></div>
+      {% endif %}
+    </section>
+
+    {# ── CONTESTS ── #}
+    <section class="tab-section" id="tab-contests">
+      <div class="section-intro">
+        <h2>🏆 Active Contests</h2>
+        <p>Pay 5 USDT entry and predict to win prizes!</p>
+      </div>
+
+      {% if contests %}
+        <div class="plans-grid">
+          {% for c in contests %}
+          <div class="plan-card {{ 'plan-card--featured' if c.is_worldcup else '' }}">
+            {% if c.is_worldcup %}<div class="plan-badge">🌍 WORLD CUP</div>{% endif %}
+            <div class="plan-name">{{ c.name }}</div>
+            <p style="color:var(--text-2);font-size:0.85rem;margin:0.5rem 0">{{ c.description or '' }}</p>
+            <div class="plan-amount" style="font-size:1.2rem">${{ "%.2f"|format(c.entry_fee_usdt or 5) }} entry</div>
+            <div class="plan-rate">
+              <span class="rate-num">🥇 ${{ "%.0f"|format(c.prize_1st or 100) }}</span>
+              <span class="rate-label">1st Place</span>
+            </div>
+            <div class="plan-daily" style="color:var(--text-2)">2nd: ${{ "%.0f"|format(c.prize_2nd or 50) }}</div>
+            <a href="{{ url_for('contests.predict', contest_id=c.id) }}" class="btn btn--outline btn--full">View Predictions</a>
+            <form method="POST" action="{{ url_for('contests.join', contest_id=c.id) }}" style="margin-top:0.5rem">
+              <button type="submit" class="btn btn--primary btn--full"
+                onclick="return confirm('Pay ${{ "%.2f"|format(c.entry_fee_usdt or 5) }} USDT to enter?')">
+                Join Contest
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state"><p>No active contests right now. Check back soon!</p></div>
+      {% endif %}
+    </section>
+
+  </main>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-tab]').forEach(item => {
+  item.addEventListener('click', function(e) {
+    e.preventDefault();
+    const name = this.dataset.tab;
+    document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('[data-tab]').forEach(n => n.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    this.classList.add('active');
+    const titles = {today:"Today's Matches",tomorrow:"Tomorrow's Matches",results:"Results",contests:"Contests"};
+    document.getElementById('page-title').textContent = titles[name] || name;
+  });
+});
+</script>
+{% endblock %}

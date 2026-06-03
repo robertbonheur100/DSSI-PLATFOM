@@ -1,0 +1,156 @@
+===================================================================
+  INTEGRATION GUIDE — Football Module
+  Read this file carefully. Do things in ORDER.
+===================================================================
+
+────────────────────────────────────────────────────────────────
+STEP 1 — Run the SQL in Supabase
+────────────────────────────────────────────────────────────────
+1. Open your Supabase project → SQL Editor
+2. Paste the full contents of SCHEMA.sql
+3. Click "Run"
+   → Creates 6 tables + 2 views + indexes
+
+────────────────────────────────────────────────────────────────
+STEP 2 — Copy route files into your project
+────────────────────────────────────────────────────────────────
+Copy these 2 files into your existing  routes/  folder:
+
+  routes/football.py          ← match hub, standings, leaderboard
+  routes/admin_football.py    ← admin panel for football
+  routes/contests.py          ← join, predict, scoring algorithm
+
+Your routes/ folder should now look like:
+  routes/
+    auth.py           (existing)
+    dashboard.py      (existing)
+    admin.py          (existing)
+    investments.py    (existing)
+    referrals.py      (existing)
+    football.py       ← NEW
+    admin_football.py ← NEW
+    contests.py       ← NEW
+
+────────────────────────────────────────────────────────────────
+STEP 3 — Copy templates into your project
+────────────────────────────────────────────────────────────────
+Create this folder structure inside templates/:
+
+  templates/
+    football/                 ← NEW folder
+      hub.html
+      standings.html
+      predict.html
+      leaderboard.html
+      contest_leaderboard.html
+      contests.html
+      admin_football.html
+
+────────────────────────────────────────────────────────────────
+STEP 4 — Edit app.py  (ADD 6 lines)
+────────────────────────────────────────────────────────────────
+Open your existing app.py and make these changes:
+
+  # ADD these 3 imports at the top with the other imports:
+  from routes.football       import football_bp
+  from routes.contests       import contests_bp
+  from routes.admin_football import admin_football_bp
+
+  # ADD these 3 blueprint registrations INSIDE create_app():
+  app.register_blueprint(football_bp,       url_prefix='/football')
+  app.register_blueprint(contests_bp,       url_prefix='/contests')
+  app.register_blueprint(admin_football_bp, url_prefix='/admin/football')
+
+Your final create_app() block should look like this:
+
+  def create_app():
+      app = Flask(__name__)
+      app.config.from_object(Config)
+      os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+      Session(app)
+      app.register_blueprint(auth_bp,              url_prefix='/auth')
+      app.register_blueprint(dashboard_bp,         url_prefix='/dashboard')
+      app.register_blueprint(admin_bp,             url_prefix='/admin')
+      app.register_blueprint(investments_bp,       url_prefix='/investments')
+      app.register_blueprint(referrals_bp,         url_prefix='/referrals')
+      app.register_blueprint(football_bp,          url_prefix='/football')       # ← NEW
+      app.register_blueprint(contests_bp,          url_prefix='/contests')       # ← NEW
+      app.register_blueprint(admin_football_bp,    url_prefix='/admin/football') # ← NEW
+      @app.route('/')
+      def index():
+          return redirect(url_for('auth.login'))
+      return app
+
+────────────────────────────────────────────────────────────────
+STEP 5 — Add CSS to your stylesheet
+────────────────────────────────────────────────────────────────
+Open static/css/style.css (or wherever your CSS lives).
+Paste the entire contents of  football_styles.css  at the bottom.
+
+────────────────────────────────────────────────────────────────
+STEP 6 — Add Football link to dashboard sidebar (optional)
+────────────────────────────────────────────────────────────────
+In your existing templates/dashboard.html, add this nav item
+inside the <nav class="sidebar-nav"> block:
+
+  <a href="{{ url_for('football.hub') }}" class="nav-item">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none"
+      stroke="currentColor" stroke-width="2"/></svg>⚽ Football Hub
+  </a>
+
+────────────────────────────────────────────────────────────────
+STEP 7 — Add Football link to admin sidebar
+────────────────────────────────────────────────────────────────
+In your existing templates/admin.html, add this nav item:
+
+  <a class="nav-item" href="{{ url_for('admin_football.dashboard') }}">
+    ⚽ Football
+  </a>
+
+────────────────────────────────────────────────────────────────
+URL REFERENCE (all new pages)
+────────────────────────────────────────────────────────────────
+USER PAGES:
+  /football/              → Match Hub (today/tomorrow/results/contests)
+  /football/standings     → League tables
+  /football/leaderboard   → Global top predictors
+  /football/leaderboard/<id> → Per-contest ranking
+  /contests/              → Join a contest
+  /contests/predict/<id>  → Submit predictions for a contest
+
+ADMIN PAGES:
+  /admin/football/        → Football admin panel
+                            (create matches, enter results,
+                             create contests, add matches to contest,
+                             pay winners, update standings)
+
+────────────────────────────────────────────────────────────────
+HOW THE FLOW WORKS (summary)
+────────────────────────────────────────────────────────────────
+
+1. Admin creates matches (home/away/date/league)
+2. Admin creates a contest (name/entry fee/prizes)
+3. Admin sets contest status → "active"
+4. Admin adds matches to the contest
+5. Users visit /contests/ → pay entry fee → go to predict page
+6. Users fill in predictions for each match
+7. Match happens in real life
+8. Admin goes to /admin/football/ → "Enter Results" tab
+   → enters final score, first scorer, corners
+   → clicks "Save Result"
+   → system automatically scores ALL predictions for that match
+9. After all matches done → Admin clicks "Pay Winners & Close"
+   → 1st place gets $100 USDT, 2nd place gets $50 USDT
+   → credited to their USDT balance automatically
+   → contest closes
+
+────────────────────────────────────────────────────────────────
+SCORING BREAKDOWN (auto-calculated)
+────────────────────────────────────────────────────────────────
+  Correct winner          →  10 points
+  Exact score             →  30 points
+  Correct first scorer    →  25 points
+  Correct corners (exact) →  15 points
+  Maximum per match       →  80 points
+
+===================================================================

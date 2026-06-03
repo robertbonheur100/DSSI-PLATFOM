@@ -1,0 +1,157 @@
+{# templates/football/predict.html #}
+{% extends 'base.html' %}
+{% block title %}Predictions — {{ contest.name }}{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark-sm">⚽</span>
+      <span class="sidebar-brand">Predictions</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('football.hub') }}" class="nav-item">← Hub</a>
+      <a href="{{ url_for('contests.index') }}" class="nav-item">🏆 Contests</a>
+      <a href="{{ url_for('football.leaderboard') }}" class="nav-item">🥇 Leaderboard</a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <h1 class="page-title">🏆 {{ contest.name }}</h1>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert--{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="section-intro">
+      <p>{{ contest.description or 'Predict each match result and earn points!' }}</p>
+      <div class="info-box">
+        ⚡ <strong>Scoring:</strong>
+        Correct winner = <strong>10 pts</strong> &nbsp;|&nbsp;
+        Exact score = <strong>30 pts</strong> &nbsp;|&nbsp;
+        First scorer = <strong>25 pts</strong> &nbsp;|&nbsp;
+        Corners = <strong>15 pts</strong>
+      </div>
+    </div>
+
+    {% if matches %}
+    <form method="POST" action="{{ url_for('contests.submit_predictions', contest_id=contest.id) }}">
+
+      {% for m in matches %}
+      {% set pred = pred_map.get(m.id, {}) %}
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <h3>{{ m.home_team }} vs {{ m.away_team }}</h3>
+          <span class="text-muted" style="font-size:0.82rem">
+            {{ m.league }} &nbsp;|&nbsp; {{ m.match_date }} {{ (m.match_time or '')[:5] }}
+          </span>
+        </div>
+
+        {% if m.status == 'finished' %}
+          {# Show real result, lock form #}
+          <div class="info-box" style="margin:1rem">
+            ✅ <strong>Final score:</strong>
+            {{ m.home_team }} <strong>{{ m.home_score }}</strong> –
+            <strong>{{ m.away_score }}</strong> {{ m.away_team }}
+            {% if m.first_scorer %}&nbsp;|&nbsp; 1st Scorer: {{ m.first_scorer }}{% endif %}
+            {% if m.corners %}&nbsp;|&nbsp; Corners: {{ m.corners }}{% endif %}
+          </div>
+          {% if pred %}
+          <div style="padding:0 1.25rem 1rem;font-size:0.85rem;color:var(--text-2)">
+            Your prediction: <strong>{{ pred.predicted_home_score }}–{{ pred.predicted_away_score }}</strong>
+            &nbsp;|&nbsp; Points: <strong style="color:var(--gold)">{{ pred.total_points }}</strong>
+          </div>
+          {% endif %}
+
+        {% else %}
+          {# Prediction form — match not finished yet #}
+          <div class="form-body" style="padding-top:0">
+
+            {# ── Winner ── #}
+            <div class="form-group">
+              <label>1. Match Winner</label>
+              <div class="winner-selector">
+                {% for val, label in [('home', m.home_team), ('draw', 'Draw'), ('away', m.away_team)] %}
+                <label class="winner-option {{ 'winner-option--selected' if pred.get('predicted_winner') == val else '' }}">
+                  <input type="radio" name="winner_{{ m.id }}" value="{{ val }}"
+                    {{ 'checked' if pred.get('predicted_winner') == val else '' }} required>
+                  <span>{{ label }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# ── Score ── #}
+            <div class="form-row">
+              <div class="form-group">
+                <label>2. Score — {{ m.home_team }}</label>
+                <input type="number" name="home_score_{{ m.id }}" min="0" max="20"
+                  value="{{ pred.get('predicted_home_score', 0) }}" required>
+              </div>
+              <div class="form-group">
+                <label>2. Score — {{ m.away_team }}</label>
+                <input type="number" name="away_score_{{ m.id }}" min="0" max="20"
+                  value="{{ pred.get('predicted_away_score', 0) }}" required>
+              </div>
+            </div>
+
+            {# ── First Scorer ── #}
+            <div class="form-group">
+              <label>3. First Goal Scorer (player name)</label>
+              <input type="text" name="first_scorer_{{ m.id }}"
+                placeholder="e.g. Mbappé"
+                value="{{ pred.get('predicted_first_scorer', '') }}">
+            </div>
+
+            {# ── Corners ── #}
+            <div class="form-group">
+              <label>4. Total Corners in Match</label>
+              <input type="number" name="corners_{{ m.id }}" min="0" max="30"
+                value="{{ pred.get('predicted_corners', 0) }}">
+            </div>
+
+          </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      {# Only show submit if any matches are still open #}
+      {% if matches | selectattr('status', 'ne', 'finished') | list %}
+      <div style="padding:0 0 2rem">
+        <button type="submit" class="btn btn--primary"
+          onclick="return confirm('Save all predictions?')">
+          💾 Save Predictions
+        </button>
+      </div>
+      {% endif %}
+
+    </form>
+    {% else %}
+      <div class="empty-state">
+        <p>No matches added to this contest yet. Check back soon!</p>
+      </div>
+    {% endif %}
+
+  </main>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+// Highlight selected winner option
+document.querySelectorAll('.winner-option input').forEach(input => {
+  input.addEventListener('change', () => {
+    document.querySelectorAll(`input[name="${input.name}"]`).forEach(i => {
+      i.parentElement.classList.remove('winner-option--selected');
+    });
+    input.parentElement.classList.add('winner-option--selected');
+  });
+});
+</script>
+{% endblock %}

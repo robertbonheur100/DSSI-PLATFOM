@@ -1,0 +1,105 @@
+{# templates/football/contest_leaderboard.html #}
+{% extends 'base.html' %}
+{% block title %}{{ contest.name }} — Rankings{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark-sm">🏆</span>
+      <span class="sidebar-brand">Contest Rankings</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('contests.index') }}" class="nav-item">← Contests</a>
+      <a href="{{ url_for('football.leaderboard') }}" class="nav-item">🥇 Global Board</a>
+      <a href="{{ url_for('football.hub') }}" class="nav-item">⚽ Football Hub</a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <h1 class="page-title">{{ contest.name }}</h1>
+    </header>
+
+    <div class="section-intro">
+      <h2>🏆 Contest Rankings</h2>
+      <p>
+        Entry: <strong>${{ "%.2f"|format(contest.entry_fee_usdt or 5) }}</strong> ·
+        1st Prize: <strong style="color:var(--gold)">${{ "%.0f"|format(contest.prize_1st or 100) }}</strong> ·
+        2nd Prize: <strong>${{ "%.0f"|format(contest.prize_2nd or 50) }}</strong>
+      </p>
+    </div>
+
+    {# Podium top 3 #}
+    {% if board %}
+    <div class="podium-row">
+      {% if board|length >= 2 %}
+      <div class="podium-card podium-card--2nd">
+        <div class="podium-rank">🥈</div>
+        <div class="podium-avatar">{{ board[1].username[0].upper() }}</div>
+        <div class="podium-name">{{ board[1].username }}</div>
+        <div class="podium-pts">{{ board[1].total_points or 0 }} pts</div>
+      </div>
+      {% endif %}
+
+      <div class="podium-card podium-card--1st">
+        <div class="podium-crown">👑</div>
+        <div class="podium-rank">🥇</div>
+        <div class="podium-avatar">{{ board[0].username[0].upper() }}</div>
+        <div class="podium-name">{{ board[0].username }}</div>
+        <div class="podium-pts">{{ board[0].total_points or 0 }} pts</div>
+      </div>
+
+      {% if board|length >= 3 %}
+      <div class="podium-card podium-card--3rd">
+        <div class="podium-rank">🥉</div>
+        <div class="podium-avatar">{{ board[2].username[0].upper() }}</div>
+        <div class="podium-name">{{ board[2].username }}</div>
+        <div class="podium-pts">{{ board[2].total_points or 0 }} pts</div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header"><h3>Full Ranking — {{ board|length }} participants</h3></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Points</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for row in board %}
+          <tr class="{{ 'tr-gold' if loop.index == 1 else 'tr-silver' if loop.index == 2 else 'tr-bronze' if loop.index == 3 else '' }}">
+            <td>
+              {% if loop.index == 1 %}🥇
+              {% elif loop.index == 2 %}🥈
+              {% elif loop.index == 3 %}🥉
+              {% else %}#{{ row.rank }}{% endif %}
+            </td>
+            <td><strong>{{ row.username }}</strong></td>
+            <td><strong style="color:var(--gold)">{{ row.total_points or 0 }}</strong></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="3" class="text-center text-muted">No predictions scored yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if contest.status == 'finished' %}
+    <div class="info-box">
+      ✅ This contest has ended. Winners have been paid.
+    </div>
+    {% endif %}
+
+  </main>
+</div>
+{% endblock %}

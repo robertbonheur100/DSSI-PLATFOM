@@ -1,0 +1,95 @@
+{# templates/football/standings.html #}
+{% extends 'base.html' %}
+{% block title %}Standings — DSSI{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark-sm">⚽</span>
+      <span class="sidebar-brand">Football Hub</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('football.hub') }}" class="nav-item">📅 Matches</a>
+      <a href="{{ url_for('football.standings') }}" class="nav-item active">📊 Standings</a>
+      <a href="{{ url_for('football.leaderboard') }}" class="nav-item">🥇 Leaderboard</a>
+      <a href="{{ url_for('contests.index') }}" class="nav-item">🏆 Contests</a>
+      <a href="{{ url_for('dashboard.index') }}" class="nav-item">← Dashboard</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <h1 class="page-title">League Standings</h1>
+    </header>
+
+    {% if leagues %}
+      {% for league_name, teams in leagues.items() %}
+      <div class="card" style="margin-bottom:2rem">
+        <div class="card-header">
+          <h3>📊 {{ league_name }}</h3>
+          {% if teams %}<span class="text-muted" style="font-size:0.8rem">{{ teams[0].get('season','') }}</span>{% endif %}
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Team</th>
+                <th>P</th>
+                <th>W</th>
+                <th>D</th>
+                <th>L</th>
+                <th>GF</th>
+                <th>GA</th>
+                <th>GD</th>
+                <th>Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for team in teams %}
+            <tr class="{{ 'standings-top' if loop.index <= 4 else '' }} {{ 'standings-danger' if loop.index > teams|length - 3 else '' }}">
+              <td><strong>{{ team.position }}</strong></td>
+              <td>
+                {% if team.team_logo %}
+                  <img src="{{ team.team_logo }}" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;border-radius:50%">
+                {% endif %}
+                <strong>{{ team.team_name }}</strong>
+              </td>
+              <td>{{ team.played }}</td>
+              <td class="text-green">{{ team.won }}</td>
+              <td class="text-muted">{{ team.drawn }}</td>
+              <td class="text-red">{{ team.lost }}</td>
+              <td>{{ team.goals_for }}</td>
+              <td>{{ team.goals_against }}</td>
+              <td class="{{ 'text-green' if team.goal_diff > 0 else 'text-red' if team.goal_diff < 0 else '' }}">
+                {{ "%+d"|format(team.goal_diff) }}
+              </td>
+              <td><strong style="color:var(--gold)">{{ team.points }}</strong></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:0.75rem 1.25rem;font-size:0.78rem;color:var(--text-2);border-top:1px solid var(--border)">
+          <span style="display:inline-block;width:12px;height:12px;background:rgba(100,220,100,0.2);border-left:3px solid #4ade80;margin-right:6px"></span>
+          Champions League &nbsp;|&nbsp;
+          <span style="display:inline-block;width:12px;height:12px;background:rgba(250,100,100,0.15);border-left:3px solid #f87171;margin-right:6px"></span>
+          Relegation Zone
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <p>No standings data yet. Admin will update league tables.</p>
+      </div>
+    {% endif %}
+
+  </main>
+</div>
+{% endblock %}

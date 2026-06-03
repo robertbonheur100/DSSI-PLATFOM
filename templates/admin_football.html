@@ -1,0 +1,394 @@
+{# templates/football/admin_football.html #}
+{% extends 'base.html' %}
+{% block title %}Football Admin — DSSI{% endblock %}
+{% block body_class %}app-page admin-page{% endblock %}
+{% block content %}
+
+<div class="app-layout">
+  <aside class="sidebar sidebar--admin" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark-sm">⚽</span>
+      <span class="sidebar-brand">Football Admin</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-tab="matches">🗓 Matches</a>
+      <a class="nav-item" data-tab="results">📋 Enter Results</a>
+      <a class="nav-item" data-tab="contests">🏆 Contests</a>
+      <a class="nav-item" data-tab="standings">📊 Standings</a>
+      <a href="{{ url_for('admin.dashboard') }}" class="nav-item">← Main Admin</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <h1 class="page-title" id="page-title">Matches</h1>
+      <div class="admin-badge">FOOTBALL ADMIN</div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert--{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+
+    {# ── CREATE MATCH ── #}
+    <section class="tab-section active" id="tab-matches">
+
+      <div class="card">
+        <div class="card-header"><h3>➕ Create Match</h3></div>
+        <form method="POST" action="{{ url_for('admin_football.create_match') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Home Team</label>
+              <input type="text" name="home_team" placeholder="e.g. Manchester City" required>
+            </div>
+            <div class="form-group">
+              <label>Away Team</label>
+              <input type="text" name="away_team" placeholder="e.g. Liverpool" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>League</label>
+              <select name="league" required>
+                <option value="Premier League">Premier League</option>
+                <option value="La Liga">La Liga</option>
+                <option value="Serie A">Serie A</option>
+                <option value="Bundesliga">Bundesliga</option>
+                <option value="Ligue 1">Ligue 1</option>
+                <option value="Champions League">Champions League</option>
+                <option value="World Cup">World Cup</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Match Date</label>
+              <input type="date" name="match_date" required>
+            </div>
+            <div class="form-group">
+              <label>Kick-off Time</label>
+              <input type="time" name="match_time">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Home Logo URL (optional)</label>
+              <input type="url" name="home_logo" placeholder="https://...">
+            </div>
+            <div class="form-group">
+              <label>Away Logo URL (optional)</label>
+              <input type="url" name="away_logo" placeholder="https://...">
+            </div>
+          </div>
+          <button type="submit" class="btn btn--primary">Create Match</button>
+        </form>
+      </div>
+
+      {# ── MATCH LIST ── #}
+      <div class="card">
+        <div class="card-header"><h3>All Matches ({{ matches|length }})</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>Date</th><th>League</th><th>Match</th><th>Status</th><th>Update Status</th></tr>
+            </thead>
+            <tbody>
+            {% for m in matches %}
+            <tr>
+              <td class="text-muted">{{ m.match_date }} {{ (m.match_time or '')[:5] }}</td>
+              <td>{{ m.league }}</td>
+              <td><strong>{{ m.home_team }} vs {{ m.away_team }}</strong></td>
+              <td><span class="status-badge status--{{ m.status }}">{{ m.status.upper() }}</span></td>
+              <td>
+                <form method="POST" action="{{ url_for('admin_football.update_match_status', match_id=m.id) }}" style="display:flex;gap:4px">
+                  <select name="status" style="font-size:0.78rem;padding:2px 4px;background:var(--surface-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px">
+                    <option value="scheduled" {{ 'selected' if m.status == 'scheduled' }}>Scheduled</option>
+                    <option value="live" {{ 'selected' if m.status == 'live' }}>Live</option>
+                    <option value="finished" {{ 'selected' if m.status == 'finished' }}>Finished</option>
+                  </select>
+                  <button type="submit" class="btn btn--xs btn--outline">Set</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted">No matches yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+
+    {# ── ENTER RESULTS ── #}
+    <section class="tab-section" id="tab-results">
+      <div class="section-intro">
+        <h2>📋 Enter Match Results</h2>
+        <p>After entering the result, the system will automatically score all user predictions for that match.</p>
+      </div>
+
+      {% for m in matches if m.status != 'finished' %}
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-header">
+          <h3>{{ m.home_team }} vs {{ m.away_team }}</h3>
+          <span class="text-muted" style="font-size:0.82rem">{{ m.league }} — {{ m.match_date }}</span>
+        </div>
+        <form method="POST" action="{{ url_for('admin_football.enter_result', match_id=m.id) }}" class="form-body" style="padding-top:0">
+          <div class="form-row">
+            <div class="form-group">
+              <label>{{ m.home_team }} Goals</label>
+              <input type="number" name="home_score" min="0" max="20" value="0" required>
+            </div>
+            <div class="form-group">
+              <label>{{ m.away_team }} Goals</label>
+              <input type="number" name="away_score" min="0" max="20" value="0" required>
+            </div>
+            <div class="form-group">
+              <label>First Goal Scorer</label>
+              <input type="text" name="first_scorer" placeholder="Player name">
+            </div>
+            <div class="form-group">
+              <label>Total Corners</label>
+              <input type="number" name="corners" min="0" max="30" value="0">
+            </div>
+            <div class="form-group form-group--action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn--success"
+                onclick="return confirm('Save result and auto-score predictions?')">
+                ✓ Save Result
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+      {% else %}
+      <div class="empty-state"><p>No pending matches to score.</p></div>
+      {% endfor %}
+    </section>
+
+
+    {# ── CONTESTS ── #}
+    <section class="tab-section" id="tab-contests">
+
+      {# Create contest #}
+      <div class="card">
+        <div class="card-header"><h3>➕ Create Contest</h3></div>
+        <form method="POST" action="{{ url_for('admin_football.create_contest') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Contest Name</label>
+              <input type="text" name="name" placeholder="e.g. World Cup 2026 Predictor" required>
+            </div>
+            <div class="form-group">
+              <label>Entry Fee (USDT)</label>
+              <input type="number" name="entry_fee" step="0.01" value="5.00" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>1st Prize (USDT)</label>
+              <input type="number" name="prize_1st" step="0.01" value="100.00" required>
+            </div>
+            <div class="form-group">
+              <label>2nd Prize (USDT)</label>
+              <input type="number" name="prize_2nd" step="0.01" value="50.00" required>
+            </div>
+            <div class="form-group">
+              <label>Start Date</label>
+              <input type="date" name="start_date">
+            </div>
+            <div class="form-group">
+              <label>End Date</label>
+              <input type="date" name="end_date">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <input type="text" name="description" placeholder="Brief description">
+          </div>
+          <div class="form-group" style="display:flex;align-items:center;gap:0.5rem">
+            <input type="checkbox" name="is_worldcup" id="wc" style="width:auto">
+            <label for="wc" style="margin:0">🌍 World Cup Mode</label>
+          </div>
+          <button type="submit" class="btn btn--primary">Create Contest</button>
+        </form>
+      </div>
+
+      {# Contest list #}
+      {% for c in contests %}
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <h3>🏆 {{ c.name }} {% if c.is_worldcup %}<span class="plan-badge" style="position:relative;top:0;font-size:0.7rem">WORLD CUP</span>{% endif %}</h3>
+          <span class="status-badge status--{{ c.status }}">{{ c.status.upper() }}</span>
+        </div>
+        <div style="padding:0.75rem 1.25rem;display:flex;gap:1rem;flex-wrap:wrap;font-size:0.85rem;color:var(--text-2)">
+          <span>Entry: <strong>${{ "%.2f"|format(c.entry_fee_usdt or 5) }}</strong></span>
+          <span>1st: <strong>${{ "%.2f"|format(c.prize_1st or 100) }}</strong></span>
+          <span>2nd: <strong>${{ "%.2f"|format(c.prize_2nd or 50) }}</strong></span>
+        </div>
+
+        {# Change status #}
+        <div style="padding:0 1.25rem 0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+          <form method="POST" action="{{ url_for('admin_football.update_contest_status', contest_id=c.id) }}" style="display:flex;gap:4px">
+            <select name="status" style="font-size:0.78rem;padding:2px 6px;background:var(--surface-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px">
+              <option value="upcoming" {{ 'selected' if c.status == 'upcoming' }}>Upcoming</option>
+              <option value="active"   {{ 'selected' if c.status == 'active' }}>Active</option>
+              <option value="finished" {{ 'selected' if c.status == 'finished' }}>Finished</option>
+            </select>
+            <button type="submit" class="btn btn--xs btn--outline">Set Status</button>
+          </form>
+
+          {# Add match #}
+          <form method="POST" action="{{ url_for('admin_football.add_match_to_contest', contest_id=c.id) }}" style="display:flex;gap:4px">
+            <select name="match_id" style="font-size:0.78rem;padding:2px 6px;background:var(--surface-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;max-width:220px">
+              <option value="">— Add match —</option>
+              {% for m in matches %}
+              <option value="{{ m.id }}">{{ m.home_team }} vs {{ m.away_team }} ({{ m.match_date }})</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn--xs btn--outline">Add Match</button>
+          </form>
+
+          {# Pay winners #}
+          {% if c.status == 'active' or c.status == 'finished' %}
+          <form method="POST" action="{{ url_for('admin_football.pay_winners', contest_id=c.id) }}"
+            onsubmit="return confirm('Pay winners and close contest?')">
+            <button type="submit" class="btn btn--xs btn--success">🏆 Pay Winners &amp; Close</button>
+          </form>
+          {% endif %}
+
+          {# Leaderboard link #}
+          <a href="{{ url_for('football.contest_leaderboard', contest_id=c.id) }}"
+             class="btn btn--xs btn--outline">📊 Leaderboard</a>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state"><p>No contests yet.</p></div>
+      {% endfor %}
+    </section>
+
+
+    {# ── STANDINGS ── #}
+    <section class="tab-section" id="tab-standings">
+      <div class="card">
+        <div class="card-header"><h3>📊 Add / Update Team Standing</h3></div>
+        <form method="POST" action="{{ url_for('admin_football.update_standings') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>League</label>
+              <select name="league" required>
+                <option value="Premier League">Premier League</option>
+                <option value="La Liga">La Liga</option>
+                <option value="Serie A">Serie A</option>
+                <option value="Bundesliga">Bundesliga</option>
+                <option value="Ligue 1">Ligue 1</option>
+                <option value="Champions League">Champions League</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Season</label>
+              <input type="text" name="season" value="2024-25" required>
+            </div>
+            <div class="form-group">
+              <label>Position</label>
+              <input type="number" name="position" min="1" max="30" value="1" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Team Name</label>
+              <input type="text" name="team_name" required>
+            </div>
+            <div class="form-group">
+              <label>Played</label>
+              <input type="number" name="played" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Won</label>
+              <input type="number" name="won" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Drawn</label>
+              <input type="number" name="drawn" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Lost</label>
+              <input type="number" name="lost" min="0" value="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Goals For</label>
+              <input type="number" name="goals_for" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Goals Against</label>
+              <input type="number" name="goals_against" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label>Goal Diff</label>
+              <input type="number" name="goal_diff" value="0">
+            </div>
+            <div class="form-group">
+              <label>Points</label>
+              <input type="number" name="points" min="0" value="0">
+            </div>
+          </div>
+          <button type="submit" class="btn btn--primary">Save Standing</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Current Standings ({{ standings|length }} entries)</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>League</th><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr></thead>
+            <tbody>
+            {% for s in standings %}
+            <tr>
+              <td>{{ s.position }}</td>
+              <td class="text-muted">{{ s.league }}</td>
+              <td><strong>{{ s.team_name }}</strong></td>
+              <td>{{ s.played }}</td>
+              <td>{{ s.won }}</td>
+              <td>{{ s.drawn }}</td>
+              <td>{{ s.lost }}</td>
+              <td><strong style="color:var(--gold)">{{ s.points }}</strong></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center text-muted">No standings yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-tab]').forEach(item => {
+  item.addEventListener('click', function(e) {
+    e.preventDefault();
+    const name = this.dataset.tab;
+    document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('[data-tab]').forEach(n => n.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    this.classList.add('active');
+    const titles = {
+      matches:'Matches', results:'Enter Results',
+      contests:'Contests', standings:'League Standings'
+    };
+    document.getElementById('page-title').textContent = titles[name] || name;
+  });
+});
+</script>
+{% endblock %}
