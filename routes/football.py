@@ -2,11 +2,26 @@
 # ──────────────────────────────────────────────────────────────
 #  FOOTBALL HUB — matches, standings, leaderboard
 # ──────────────────────────────────────────────────────────────
-
+import os
+import requests
 from datetime import date, timedelta
 from flask import Blueprint, render_template, session
 from utils.supabase_client import get_admin_supabase
 from utils.helpers import login_required
+
+API_KEY = os.getenv("FOOTBALL_API_KEY")
+
+def get_matches():
+    headers = {
+        "X-Auth-Token": API_KEY
+    }
+
+    response = requests.get(
+        "https://api.football-data.org/v4/matches",
+        headers=headers
+    )
+
+    return response.json()
 
 football_bp = Blueprint('football', __name__)
 
