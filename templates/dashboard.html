@@ -1,0 +1,631 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — DSSI{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+
+<div class="app-layout">
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark-sm">DSSI</span>
+      <span class="sidebar-brand">INVESTISMENT PLATFORM</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#overview"     class="nav-item active" data-tab="overview">
+        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Overview
+      </a>
+      <a href="#investments"  class="nav-item" data-tab="investments">
+        <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>Investments
+      </a>
+      <a href="#deposit"      class="nav-item" data-tab="deposit">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>Deposit
+      </a>
+      <a href="#withdraw"     class="nav-item" data-tab="withdraw">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z"/></svg>Withdraw
+      </a>
+      <a href="#buy-crypto"   class="nav-item" data-tab="buy-crypto">
+        <svg viewBox="0 0 24 24"><path d="M21 18v1c0 1.1-.9 2-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h14c1.1 0 2 .9 2 2v1h-9a2 2 0 00-2 2v8a2 2 0 002 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>Buy Crypto
+      </a>
+      <a href="#sell-crypto"  class="nav-item" data-tab="sell-crypto">
+        <svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>Sell Crypto
+      </a>
+      <a href="#htg-wallet"   class="nav-item" data-tab="htg-wallet">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/></svg>HTG Wallet
+      </a>
+      <a href="{{ url_for('referrals.index') }}" class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Referrals
+      </a>
+      <a href="#history"      class="nav-item" data-tab="history">
+        <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>History
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info-sm">
+        <div class="avatar-sm">{{ profile.username[0].upper() if profile.username else '?' }}</div>
+        <span>{{ profile.username }}</span>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <h1 class="page-title" id="page-title">Overview</h1>
+      <div class="topbar-right">
+        <div class="balance-chip">
+          <span class="balance-label">USDT</span>
+          <span class="balance-value">${{ "%.2f"|format(profile.balance or 0) }}</span>
+          <span class="balance-label" style="margin-left:0.5rem">HTG</span>
+          <span class="balance-value" style="color:#f59e0b">{{ "%.2f"|format(profile.balance_htg or 0) }}</span>
+        </div>
+      </div>
+    </header>
+
+    {# ── OVERVIEW ── #}
+    <section class="tab-section active" id="tab-overview">
+      <div class="stats-grid">
+        <div class="stat-card stat-card--gold">
+          <div class="stat-icon">💰</div>
+          <div class="stat-body">
+            <p class="stat-label">USDT Balance</p>
+            <p class="stat-value">${{ "%.2f"|format(profile.balance or 0) }}</p>
+          </div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(245,158,11,0.3);background:linear-gradient(135deg,rgba(245,158,11,0.08),transparent)">
+          <div class="stat-icon">🪙</div>
+          <div class="stat-body">
+            <p class="stat-label">HTG Balance</p>
+            <p class="stat-value" style="color:#f59e0b">{{ "%.2f"|format(profile.balance_htg or 0) }}</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📈</div>
+          <div class="stat-body">
+            <p class="stat-label">Active Plans</p>
+            <p class="stat-value">{{ investments|selectattr('status','eq','active')|list|length }}</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💸</div>
+          <div class="stat-body">
+            <p class="stat-label">Referral Earnings</p>
+            <p class="stat-value">${{ "%.2f"|format(referral_earnings) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>Active Investment Plans</h3>
+          <button class="btn btn--sm btn--outline" onclick="switchTab('investments')">+ Add Plan</button>
+        </div>
+        {% if investments %}
+        <div class="inv-list">
+          {% for inv in investments %}
+          <div class="inv-item">
+            <div class="inv-badge">{{ inv.plan_name }}</div>
+            <div class="inv-details">
+              <span class="inv-amount">${{ "%.2f"|format(inv.amount) }}</span>
+              <span class="inv-rate">+2%/day</span>
+            </div>
+            <div class="inv-meta">
+              <span class="inv-earned">Earned: ${{ "%.2f"|format(inv.total_earned or 0) }}</span>
+              <span class="status-badge status--{{ inv.status }}">{{ inv.status.upper() }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state"><p>No active plans yet. <a href="#investments" onclick="switchTab('investments')">Activate one →</a></p></div>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Recent Transactions</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Type</th><th>Amount</th><th>Description</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for tx in transactions[:8] %}
+            <tr>
+              <td><span class="type-badge type--{{ tx.type }}">{{ tx.type.replace('_',' ').title() }}</span></td>
+              <td class="{{ 'text-green' if tx.amount > 0 else 'text-red' }}">${{ "%.2f"|format(tx.amount|abs) }}</td>
+              <td>{{ (tx.description or '')[:50] }}</td>
+              <td class="text-muted">{{ (tx.created_at or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted">No transactions yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── INVESTMENTS ── #}
+    <section class="tab-section" id="tab-investments">
+      <div class="section-intro">
+        <h2>Investment Plans</h2>
+        <p>Activate a plan and earn <strong>2% daily profit</strong> every 24 hours automatically.</p>
+      </div>
+      <div class="plans-grid">
+        {% for pid, plan in plans.items() %}
+        <div class="plan-card {{ 'plan-card--featured' if pid == 3 else '' }}">
+          {% if pid == 3 %}<div class="plan-badge">POPULAR</div>{% endif %}
+          <div class="plan-tier">Plan {{ pid }}</div>
+          <div class="plan-name">{{ plan.name }}</div>
+          <div class="plan-amount">${{ plan.amount }}</div>
+          <div class="plan-rate">
+            <span class="rate-num">2%</span>
+            <span class="rate-label">Daily Profit</span>
+          </div>
+          <div class="plan-daily">${{ "%.2f"|format(plan.amount * 0.02) }}/day</div>
+          <form method="POST" action="{{ url_for('investments.activate') }}">
+            <input type="hidden" name="plan_id" value="{{ pid }}">
+            <button type="submit" class="btn btn--primary btn--full"
+              onclick="return confirm('Activate {{ plan.name }} Plan for ${{ plan.amount }}?')">
+              Activate — ${{ plan.amount }}
+            </button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="info-box">
+        ⚡ <strong>How it works:</strong> Plan cost is deducted from your balance on activation.
+        Profits are credited automatically every 24 hours.
+      </div>
+    </section>
+
+    {# ── DEPOSIT ── #}
+    <section class="tab-section" id="tab-deposit">
+      <div class="section-intro">
+        <h2>Deposit Funds</h2>
+        <p>Send USDT to one of our wallets, then submit your request below.</p>
+      </div>
+      <div class="deposit-grid">
+        <div class="wallet-card">
+          <div class="wallet-network">USDT TRC-20</div>
+          <div class="wallet-icon">🔷</div>
+          <div class="wallet-address" id="addr-trc20">{{ usdt_trc20 }}</div>
+          <button class="btn btn--sm btn--outline" onclick="copyAddress('addr-trc20')">Copy Address</button>
+        </div>
+        <div class="wallet-card">
+          <div class="wallet-network">USDT BEP-20</div>
+          <div class="wallet-icon">🟡</div>
+          <div class="wallet-address" id="addr-bep20">{{ usdt_bep20 }}</div>
+          <button class="btn btn--sm btn--outline" onclick="copyAddress('addr-bep20')">Copy Address</button>
+        </div>
+      </div>
+      <div class="whatsapp-notice">
+        <div class="wa-icon">📱</div>
+        <div>
+          <strong>Send payment proof via WhatsApp</strong>
+          <p>After transferring, send your screenshot to:
+            <a href="https://wa.me/{{ whatsapp }}" target="_blank" class="wa-link">+{{ whatsapp }}</a>
+          </p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Submit Deposit Request</h3></div>
+        <form method="POST" action="{{ url_for('dashboard.deposit') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Amount (USDT)</label>
+              <input type="number" name="amount" step="0.01" min="1" placeholder="50.00" required>
+            </div>
+            <div class="form-group">
+              <label>Network</label>
+              <select name="network" required>
+                <option value="TRC-20">USDT TRC-20</option>
+                <option value="BEP-20">USDT BEP-20</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Transaction Hash / Reference</label>
+            <input type="text" name="proof_note" placeholder="Paste your transaction hash here">
+          </div>
+          <button type="submit" class="btn btn--primary">Submit Deposit Request</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Deposit History</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Amount</th><th>Network</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for d in deposits %}
+            <tr>
+              <td>${{ "%.2f"|format(d.amount) }}</td>
+              <td>{{ d.network or '—' }}</td>
+              <td><span class="status-badge status--{{ d.status }}">{{ d.status.upper() }}</span></td>
+              <td class="text-muted">{{ (d.created_at or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted">No deposits yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── WITHDRAW ── #}
+    <section class="tab-section" id="tab-withdraw">
+      <div class="section-intro">
+        <h2>Withdraw Funds</h2>
+        <p>Available balance: <strong class="text-green">${{ "%.2f"|format(profile.balance or 0) }}</strong></p>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Withdrawal Request &nbsp; 5% FEE</h3></div>
+        <form method="POST" action="{{ url_for('dashboard.withdraw') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Amount (USDT)</label>
+              <input type="number" name="amount" step="0.01" min="1" max="{{ profile.balance or 0 }}" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+              <label>Network</label>
+              <select name="network" required>
+                <option value="TRC-20">USDT TRC-20</option>
+                <option value="BEP-20">USDT BEP-20</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Your Wallet Address</label>
+            <input type="text" name="wallet_address" placeholder="Enter your USDT wallet address" required>
+          </div>
+          <button type="submit" class="btn btn--primary"
+            onclick="return confirm('Submit withdrawal request?')">Request Withdrawal</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Withdrawal History</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Amount</th><th>Wallet</th><th>Network</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for w in withdrawals %}
+            <tr>
+              <td>${{ "%.2f"|format(w.amount) }}</td>
+              <td class="text-mono">{{ (w.wallet_address or '')[:18] }}…</td>
+              <td>{{ w.network or '—' }}</td>
+              <td><span class="status-badge status--{{ w.status }}">{{ w.status.upper() }}</span></td>
+              <td class="text-muted">{{ (w.created_at or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted">No withdrawals yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── BUY CRYPTO ── #}
+    <section class="tab-section" id="tab-buy-crypto">
+      <div class="section-intro">
+        <h2>Buy Crypto (HTG → Platform)</h2>
+        <p>Send HTG via NatCash, then submit your request to get your HTG balance credited.</p>
+      </div>
+      <div class="natcash-box">
+        <div class="natcash-box-icon">📱</div>
+        <div class="natcash-box-body">
+          <p class="natcash-box-label">Admin NatCash Number</p>
+          <p class="natcash-box-number" id="natcash-num">{{ natcash_admin }}</p>
+          <button class="btn btn--sm btn--outline" onclick="copyAddress('natcash-num')">Copy Number</button>
+        </div>
+        <div class="natcash-box-rate">
+          <p class="natcash-box-label">Current Rate</p>
+          <p class="natcash-box-rate-val">{{ "%.2f"|format(rate) }} HTG = 1 USDT</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Submit Buy Request</h3></div>
+        <form method="POST" action="{{ url_for('dashboard.buy_crypto') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Amount in HTG</label>
+              <input type="number" name="amount_htg" step="0.01" min="1" placeholder="e.g. 1300" required
+                oninput="document.getElementById('buy-usdt-eq').textContent='≈ '+(parseFloat(this.value||0)/{{ rate }}).toFixed(4)+' USDT'">
+              <small style="color:var(--gold);font-size:12px" id="buy-usdt-eq">≈ 0.0000 USDT</small>
+            </div>
+            <div class="form-group">
+              <label>Your NatCash Sender Number</label>
+              <input type="text" name="natcash_sender" placeholder="e.g. 41234567" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>NatCash Transaction Reference / Note</label>
+            <input type="text" name="proof_note" placeholder="NatCash confirmation code">
+          </div>
+          <div class="info-box" style="margin:0">
+            ⚡ Your HTG balance will be credited once admin confirms the NatCash payment.
+          </div>
+          <button type="submit" class="btn btn--primary"
+            onclick="return confirm('Submit buy request?')">Submit Buy Request</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>My Buy Requests</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>HTG Amount</th><th>NatCash From</th><th>Reference</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for r in buy_requests %}
+            <tr>
+              <td><strong>{{ "%.2f"|format(r.amount_htg) }} HTG</strong></td>
+              <td class="text-mono">{{ r.natcash_sender or '—' }}</td>
+              <td class="text-muted">{{ (r.proof_note or '—')[:25] }}</td>
+              <td><span class="status-badge status--{{ r.status }}">{{ r.status.upper() }}</span></td>
+              <td class="text-muted">{{ (r.created_at or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted">No buy requests yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── SELL CRYPTO ── #}
+    <section class="tab-section" id="tab-sell-crypto">
+      <div class="section-intro">
+        <h2>Sell Crypto (USDT → HTG)</h2>
+        <p>Send USDT to our wallet, submit TX hash — admin will send HTG to your NatCash.</p>
+      </div>
+      <div class="deposit-grid">
+        <div class="wallet-card">
+          <div class="wallet-network">USDT TRC-20</div>
+          <div class="wallet-icon">🔷</div>
+          <div class="wallet-address" id="sell-trc20">{{ usdt_trc20 }}</div>
+          <button class="btn btn--sm btn--outline" onclick="copyAddress('sell-trc20')">Copy Address</button>
+        </div>
+        <div class="wallet-card">
+          <div class="wallet-network">USDT BEP-20</div>
+          <div class="wallet-icon">🟡</div>
+          <div class="wallet-address" id="sell-bep20">{{ usdt_bep20 }}</div>
+          <button class="btn btn--sm btn--outline" onclick="copyAddress('sell-bep20')">Copy Address</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Submit Sell Request</h3></div>
+        <form method="POST" action="{{ url_for('dashboard.sell_crypto') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>USDT Amount to Sell</label>
+              <input type="number" name="amount_usdt" step="0.000001" min="0.01" placeholder="e.g. 10.00" required
+                oninput="document.getElementById('sell-htg-eq').textContent='≈ '+(parseFloat(this.value||0)*{{ rate }}).toFixed(2)+' HTG'">
+              <small style="color:var(--gold);font-size:12px" id="sell-htg-eq">≈ 0.00 HTG</small>
+            </div>
+            <div class="form-group">
+              <label>Network</label>
+              <select name="network" required>
+                <option value="TRC-20">USDT TRC-20</option>
+                <option value="BEP-20">USDT BEP-20</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Transaction Hash (blockchain TX ID)</label>
+            <input type="text" name="tx_hash" placeholder="Paste your on-chain transaction hash" required>
+          </div>
+          <div class="form-group">
+            <label>Your NatCash Number (to receive HTG)</label>
+            <input type="text" name="natcash_receiver" placeholder="e.g. 41234567" required>
+          </div>
+          <div class="info-box" style="margin:0">
+            📌 Admin verifies the TX on-chain then sends HTG to your NatCash. HTG balance is also credited automatically.
+          </div>
+          <button type="submit" class="btn btn--primary"
+            onclick="return confirm('Submit sell request?')">Submit Sell Request</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>My Sell Requests</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>USDT</th><th>TX Hash</th><th>NatCash To</th><th>Network</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for r in sell_requests %}
+            <tr>
+              <td><strong>${{ "%.4f"|format(r.amount_usdt) }}</strong></td>
+              <td class="text-mono text-muted">{{ (r.tx_hash or '—')[:18] }}…</td>
+              <td>{{ r.natcash_receiver or '—' }}</td>
+              <td>{{ r.network or '—' }}</td>
+              <td><span class="status-badge status--{{ r.status }}">{{ r.status.upper() }}</span></td>
+              <td class="text-muted">{{ (r.created_at or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted">No sell requests yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── HTG WALLET ── #}
+    <section class="tab-section" id="tab-htg-wallet">
+      <div class="section-intro">
+        <h2>HTG Wallet</h2>
+        <p>Current rate: <strong style="color:var(--gold)">{{ "%.2f"|format(rate) }} HTG = 1 USDT</strong></p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card" style="border-color:rgba(245,158,11,0.3);background:linear-gradient(135deg,rgba(245,158,11,0.08),transparent)">
+          <div class="stat-icon">🪙</div>
+          <div class="stat-body">
+            <p class="stat-label">HTG Balance</p>
+            <p class="stat-value" style="color:#f59e0b">{{ "%.2f"|format(profile.balance_htg or 0) }}</p>
+          </div>
+        </div>
+        <div class="stat-card stat-card--gold">
+          <div class="stat-icon">💵</div>
+          <div class="stat-body">
+            <p class="stat-label">USDT Balance (crypto)</p>
+            <p class="stat-value">${{ "%.4f"|format(profile.balance_usdt or 0) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Convert HTG → USDT -->
+      <div class="card">
+        <div class="card-header"><h3>🔄 Convert HTG → USDT</h3></div>
+        <form method="POST" action="{{ url_for('dashboard.convert_htg_to_usdt') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>HTG Amount to Convert</label>
+              <input type="number" name="amount_htg" step="0.01" min="1"
+                max="{{ profile.balance_htg or 0 }}" placeholder="e.g. 1300" required
+                oninput="document.getElementById('conv-usdt').textContent='≈ '+(parseFloat(this.value||0)/{{ rate }}).toFixed(6)+' USDT'">
+              <small style="color:var(--gold);font-size:12px" id="conv-usdt">≈ 0.000000 USDT</small>
+            </div>
+            <div class="form-group form-group--action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn--primary"
+                onclick="return confirm('Convert HTG to USDT?')">Convert →</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Convert USDT → HTG -->
+      <div class="card">
+        <div class="card-header"><h3>🔄 Convert USDT → HTG</h3></div>
+        <form method="POST" action="{{ url_for('dashboard.convert_usdt_to_htg') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>USDT Amount to Convert</label>
+              <input type="number" name="amount_usdt" step="0.000001" min="0.01"
+                max="{{ profile.balance_usdt or 0 }}" placeholder="e.g. 10.00" required
+                oninput="document.getElementById('conv-htg').textContent='≈ '+(parseFloat(this.value||0)*{{ rate }}).toFixed(2)+' HTG'">
+              <small style="color:var(--gold);font-size:12px" id="conv-htg">≈ 0.00 HTG</small>
+            </div>
+            <div class="form-group form-group--action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn--primary"
+                onclick="return confirm('Convert USDT to HTG?')">Convert →</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- HTG Withdraw -->
+      <div class="card">
+        <div class="card-header"><h3>💳 Withdraw HTG to NatCash</h3></div>
+        <form method="POST" action="{{ url_for('dashboard.htg_withdraw') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>HTG Amount</label>
+              <input type="number" name="amount_htg" step="0.01" min="1"
+                max="{{ profile.balance_htg or 0 }}" placeholder="e.g. 500" required>
+            </div>
+            <div class="form-group">
+              <label>Your NatCash Number</label>
+              <input type="text" name="natcash_number" placeholder="e.g. 41234567" required>
+            </div>
+          </div>
+          <div class="info-box" style="margin:0">
+            💡 HTG deducted immediately. Admin sends to NatCash and marks approved.
+          </div>
+          <button type="submit" class="btn btn--primary"
+            onclick="return confirm('Submit HTG withdrawal?')">Withdraw HTG</button>
+        </form>
+      </div>
+
+      <!-- HTG Transaction History -->
+      <div class="card">
+        <div class="card-header"><h3>HTG Transaction History</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Type</th><th>HTG</th><th>USDT</th><th>Description</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for tx in htg_transactions %}
+            <tr>
+              <td><span class="type-badge type--{{ tx.type }}">{{ tx.type.replace('_',' ').title() }}</span></td>
+              <td class="{{ 'text-green' if (tx.amount_htg or 0) > 0 else 'text-red' }}">
+                {% if tx.amount_htg %}{{ "%+.2f"|format(tx.amount_htg) }} HTG{% else %}—{% endif %}
+              </td>
+              <td class="{{ 'text-green' if (tx.amount_usdt or 0) > 0 else 'text-red' }}">
+                {% if tx.amount_usdt %}{{ "%+.4f"|format(tx.amount_usdt) }} USDT{% else %}—{% endif %}
+              </td>
+              <td class="text-muted">{{ (tx.description or '')[:40] }}</td>
+              <td class="text-muted">{{ (tx.created_at or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted">No HTG transactions yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── HISTORY ── #}
+    <section class="tab-section" id="tab-history">
+      <div class="section-intro"><h2>Full Transaction History</h2></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Type</th><th>Amount</th><th>Description</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody>
+            {% for tx in transactions %}
+            <tr>
+              <td><span class="type-badge type--{{ tx.type }}">{{ tx.type.replace('_',' ').title() }}</span></td>
+              <td class="{{ 'text-green' if tx.amount > 0 else 'text-red' }}">${{ "%.2f"|format(tx.amount|abs) }}</td>
+              <td>{{ tx.description or '—' }}</td>
+              <td><span class="status-badge status--{{ tx.status }}">{{ tx.status.upper() }}</span></td>
+              <td class="text-muted">{{ (tx.created_at or '')[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted">No transactions</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('[data-tab]').forEach(n => n.classList.remove('active'));
+  const s = document.getElementById('tab-' + name);
+  const n = document.querySelector(`[data-tab="${name}"]`);
+  if (s) s.classList.add('active');
+  if (n) n.classList.add('active');
+  const titles = {
+    'overview':'Overview','investments':'Investments','deposit':'Deposit',
+    'withdraw':'Withdraw','buy-crypto':'Buy Crypto','sell-crypto':'Sell Crypto',
+    'htg-wallet':'HTG Wallet','history':'History'
+  };
+  document.getElementById('page-title').textContent = titles[name] || name;
+}
+
+document.querySelectorAll('[data-tab]').forEach(item => {
+  item.addEventListener('click', function(e) {
+    e.preventDefault();
+    switchTab(this.dataset.tab);
+  });
+});
+
+function copyAddress(id) {
+  const text = document.getElementById(id).textContent.trim();
+  navigator.clipboard.writeText(text).then(() => alert('Copied!'));
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+</script>
+{% endblock %}
