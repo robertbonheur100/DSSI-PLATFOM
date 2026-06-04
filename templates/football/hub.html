@@ -14,7 +14,7 @@
     </div>
     <nav class="sidebar-nav">
       <a class="nav-item active" data-tab="today">📅 Today</a>
-      <a class="nav-item" data-tab="tomorrow">🔜 Tomorrow</a>
+      <a class="nav-item" data-tab="tomorrow">🔜 Upcoming</a>
       <a class="nav-item" data-tab="results">✅ Results</a>
       <a class="nav-item" data-tab="contests">🏆 Contests</a>
       <a href="{{ url_for('football.standings') }}" class="nav-item">📊 Standings</a>
@@ -85,7 +85,7 @@
     {# ── TOMORROW ── #}
     <section class="tab-section" id="tab-tomorrow">
       <div class="section-intro">
-        <h2>🔜 Tomorrow's Matches</h2>
+       <h2>🔜 Upcoming Matches (Next 7 Days)</h2>
       </div>
 
       {% if matches_tomorrow %}
