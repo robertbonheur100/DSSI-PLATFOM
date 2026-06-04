@@ -3,4 +3,5 @@ flask-session==0.8.0
 supabase==2.5.3
 APScheduler==3.10.4
 python-dotenv==1.0.1
+requests==2.32.3
 gunicorn==22.0.0
