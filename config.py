@@ -27,6 +27,7 @@ class Config:
     REFERRAL_L2_RATE  = 0.02
 
     INVESTMENT_PLANS = {
+        0: {'name': 'Mini',    'amount': 4,    'daily_rate': 0.02},
         1: {'name': 'Starter', 'amount': 50,   'daily_rate': 0.02},
         2: {'name': 'Basic',   'amount': 100,  'daily_rate': 0.02},
         3: {'name': 'Pro',     'amount': 500,  'daily_rate': 0.02},
