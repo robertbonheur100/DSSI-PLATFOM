@@ -321,7 +321,11 @@ def update_standings():
             'goals_against':  int(request.form.get('goals_against', 0)),
             'goal_diff':      int(request.form.get('goal_diff', 0)),
             'points':         int(request.form.get('points', 0)),
-            'updated_at':     now := _now(),
+            now = _now()
+
+        data = {
+       'updated_at': now,
+        }
         }
 
         if existing:
