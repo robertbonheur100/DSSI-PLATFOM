@@ -1,3 +1,4 @@
+cat > /mnt/user-data/outputs/dashboard.html << 'HTMLEOF'
 {% extends 'base.html' %}
 {% block title %}Dashboard — DSSI{% endblock %}
 {% block body_class %}app-page{% endblock %}
@@ -337,7 +338,7 @@
               <small style="color:var(--gold);font-size:12px" id="buy-usdt-eq">≈ 0.0000 USDT</small>
             </div>
             <div class="form-group">
-              <label>Your adresse crypto Sender </label>
+              <label>Your Adresse Crypto Sender</label>
               <input type="text" name="adresse_sender" placeholder="e.g. edt46gddhguy6rdgdgyfv" required>
             </div>
           </div>
@@ -470,8 +471,8 @@
         <div class="stat-card stat-card--gold">
           <div class="stat-icon">💵</div>
           <div class="stat-body">
-            <p class="stat-label">USDT Balance (crypto)</p>
-            <p class="stat-value">${{ "%.4f"|format(profile.balance_usdt or 0) }}</p>
+            <p class="stat-label">USDT Balance</p>
+            <p class="stat-value">${{ "%.2f"|format(profile.balance or 0) }}</p>
           </div>
         </div>
       </div>
@@ -485,8 +486,8 @@
               <label>HTG Amount to Convert</label>
               <input type="number" name="amount_htg" step="0.01" min="1"
                 max="{{ profile.balance_htg or 0 }}" placeholder="e.g. 1300" required
-                oninput="document.getElementById('conv-usdt').textContent='≈ '+(parseFloat(this.value||0)/{{ rate }}).toFixed(6)+' USDT'">
-              <small style="color:var(--gold);font-size:12px" id="conv-usdt">≈ 0.000000 USDT</small>
+                oninput="document.getElementById('conv-usdt').textContent='≈ '+(parseFloat(this.value||0)/{{ rate }}).toFixed(4)+' USDT'">
+              <small style="color:var(--gold);font-size:12px" id="conv-usdt">≈ 0.0000 USDT</small>
             </div>
             <div class="form-group form-group--action">
               <label>&nbsp;</label>
@@ -505,7 +506,7 @@
             <div class="form-group">
               <label>USDT Amount to Convert</label>
               <input type="number" name="amount_usdt" step="0.000001" min="0.01"
-                max="{{ profile.balance_usdt or 0 }}" placeholder="e.g. 10.00" required
+                max="{{ profile.balance or 0 }}" placeholder="e.g. 10.00" required
                 oninput="document.getElementById('conv-htg').textContent='≈ '+(parseFloat(this.value||0)*{{ rate }}).toFixed(2)+' HTG'">
               <small style="color:var(--gold);font-size:12px" id="conv-htg">≈ 0.00 HTG</small>
             </div>
@@ -538,6 +539,36 @@
           </div>
           <button type="submit" class="btn btn--primary"
             onclick="return confirm('Submit HTG withdrawal?')">Withdraw HTG</button>
+        </form>
+      </div>
+
+      <!-- USDT Withdraw -->
+      <div class="card">
+        <div class="card-header"><h3>💵 Withdraw USDT to Wallet</h3></div>
+        <form method="POST" action="{{ url_for('dashboard.withdraw') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>USDT Amount</label>
+              <input type="number" name="amount" step="0.01" min="1"
+                max="{{ profile.balance or 0 }}" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+              <label>Network</label>
+              <select name="network" required>
+                <option value="TRC-20">USDT TRC-20</option>
+                <option value="BEP-20">USDT BEP-20</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Your Wallet Address</label>
+            <input type="text" name="wallet_address" placeholder="Enter your USDT wallet address" required>
+          </div>
+          <div class="info-box" style="margin:0">
+            💡 5% fee applies. Request reviewed by admin before sending.
+          </div>
+          <button type="submit" class="btn btn--primary"
+            onclick="return confirm('Submit USDT withdrawal?')">Withdraw USDT</button>
         </form>
       </div>
 
