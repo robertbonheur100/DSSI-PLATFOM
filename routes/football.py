@@ -1,7 +1,10 @@
 # routes/football.py
+# ───────────────────────────────────────────────
+# FOOTBALL HUB — matches, standings, leaderboard
+# ───────────────────────────────────────────────
 import os
 import requests
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from flask import Blueprint, render_template
 from utils.supabase_client import get_admin_supabase
 from utils.helpers import login_required
@@ -45,16 +48,17 @@ def _get_api_matches(date_from=None, date_to=None, status=None):
         )
         res.raise_for_status()
         raw = res.json().get("matches", [])
-        # Konvèti fòma API → fòma template nou an
+
         converted = []
         for m in raw:
-            home = m.get("homeTeam", {})
-            away = m.get("awayTeam", {})
-            score = m.get("score", {})
-            ft = score.get("fullTime", {})
-            ht_score = ft.get("home")
-            at_score = ft.get("away")
+            home      = m.get("homeTeam", {})
+            away      = m.get("awayTeam", {})
+            score     = m.get("score", {})
+            ft        = score.get("fullTime", {})
+            ht_score  = ft.get("home")
+            at_score  = ft.get("away")
             api_status = m.get("status", "SCHEDULED")
+
             # Map status API → status nou an
             if api_status in ("IN_PLAY", "PAUSED", "HALFTIME"):
                 status_mapped = "live"
@@ -62,22 +66,24 @@ def _get_api_matches(date_from=None, date_to=None, status=None):
                 status_mapped = "finished"
             else:
                 status_mapped = "scheduled"
+
             # Ekstrè dat ak lè
-            utc_date = m.get("utcDate", "")
+            utc_date   = m.get("utcDate", "")
             match_date = utc_date[:10] if utc_date else ""
             match_time = utc_date[11:16] if len(utc_date) > 10 else ""
+
             converted.append({
-                "id":          m.get("id"),
-                "home_team":   home.get("name", "—"),
-                "away_team":   away.get("name", "—"),
-                "home_logo":   home.get("crest", ""),
-                "away_logo":   away.get("crest", ""),
-                "league":      m.get("competition", {}).get("name", "—"),
-                "match_date":  match_date,
-                "match_time":  match_time,
-                "status":      status_mapped,
-                "home_score":  ht_score,
-                "away_score":  at_score,
+                "id":         m.get("id"),
+                "home_team":  home.get("name", "—"),
+                "away_team":  away.get("name", "—"),
+                "home_logo":  home.get("crest", ""),
+                "away_logo":  away.get("crest", ""),
+                "league":     m.get("competition", {}).get("name", "—"),
+                "match_date": match_date,
+                "match_time": match_time,
+                "status":     status_mapped,
+                "home_score": ht_score,
+                "away_score": at_score,
             })
         return converted
     except Exception as e:
@@ -91,20 +97,23 @@ def _get_api_matches(date_from=None, date_to=None, status=None):
 @football_bp.route('/')
 @login_required
 def hub():
-    today    = date.today().isoformat()
-    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    now      = datetime.now(timezone.utc)
+    today    = now.strftime('%Y-%m-%d')
+    tomorrow = (now + timedelta(days=1)).strftime('%Y-%m-%d')
+    week_end = (now + timedelta(days=7)).strftime('%Y-%m-%d')
+    week_ago = (now - timedelta(days=7)).strftime('%Y-%m-%d')
 
-    # Match jodi a (API)
-    matches_today    = _get_api_matches(date_from=today, date_to=today)
+    # Match jodi a
+    matches_today = _get_api_matches(date_from=today, date_to=today)
 
-    # Match demen (API)
-    matches_tomorrow = _get_api_matches(date_from=tomorrow, date_to=tomorrow)
+    # Match demen + 7 jou kap vini
+    matches_tomorrow = _get_api_matches(date_from=tomorrow, date_to=week_end)
 
-    # Match fini resamman (API)
-    matches_finished = _get_api_matches(status="FINISHED")
-    matches_finished = matches_finished[:20]  # limit 20
+    # Match fini 7 jou pase
+    matches_finished = _get_api_matches(date_from=week_ago, date_to=today, status="FINISHED")
+    matches_finished = matches_finished[:20]
 
-    # Contest yo soti Supabase toujou
+    # Contests soti Supabase
     db = _db()
     contests = _safe(lambda: db.table('football_contests')
                      .select('*').eq('status', 'active').execute())
@@ -124,7 +133,8 @@ def hub():
 @football_bp.route('/matches')
 @login_required
 def matches():
-    today = date.today().isoformat()
+    now   = datetime.now(timezone.utc)
+    today = now.strftime('%Y-%m-%d')
     all_matches = _get_api_matches(date_from=today, date_to=today)
     return render_template(
         'football/matches.html',
@@ -180,5 +190,8 @@ def contest_leaderboard(contest_id):
     board = _safe(lambda: db.table('contest_leaderboard')
                   .select('*').eq('contest_id', contest_id)
                   .order('rank').execute())
-    return render_template('football/contest_leaderboard.html',
-                           contest=contest, board=board)
+    return render_template(
+        'football/contest_leaderboard.html',
+        contest=contest,
+        board=board
+    )
