@@ -44,7 +44,6 @@ def dashboard():
         investments  = _q(lambda: db.table('investments').select('*').order('created_at', desc=True).execute())
         actions      = _q(lambda: db.table('admin_actions').select('*').order('created_at', desc=True).limit(50).execute())
 
-        # Crypto/HTG data
         buy_requests  = _q(lambda: db.table('buy_crypto_requests').select('*').order('created_at', desc=True).execute())
         sell_requests = _q(lambda: db.table('sell_crypto_requests').select('*').order('created_at', desc=True).execute())
         htg_wds       = _q(lambda: db.table('htg_withdrawals').select('*').order('created_at', desc=True).execute())
@@ -53,12 +52,12 @@ def dashboard():
 
         user_map = {u['id']: u.get('username', '—') for u in users}
 
-        pending_deps   = [d for d in deposits    if d.get('status') == 'pending']
-        pending_wds    = [w for w in withdrawals  if w.get('status') == 'pending']
-        active_invs    = [i for i in investments  if i.get('status') == 'active']
-        pending_buys   = [r for r in buy_requests  if r.get('status') == 'pending']
-        pending_sells  = [r for r in sell_requests if r.get('status') == 'pending']
-        pending_htg_wds= [w for w in htg_wds       if w.get('status') == 'pending']
+        pending_deps    = [d for d in deposits     if d.get('status') == 'pending']
+        pending_wds     = [w for w in withdrawals  if w.get('status') == 'pending']
+        active_invs     = [i for i in investments  if i.get('status') == 'active']
+        pending_buys    = [r for r in buy_requests  if r.get('status') == 'pending']
+        pending_sells   = [r for r in sell_requests if r.get('status') == 'pending']
+        pending_htg_wds = [w for w in htg_wds       if w.get('status') == 'pending']
 
         total_balance = sum(float(u.get('balance') or 0) for u in users)
         invested_vol  = sum(float(i.get('amount')  or 0) for i in active_invs)
@@ -76,7 +75,6 @@ def dashboard():
             pending_deposits=pending_deps,
             pending_withdrawals=pending_wds,
             active_investments=active_invs,
-            # Crypto/HTG
             buy_requests=buy_requests,
             sell_requests=sell_requests,
             htg_wds=htg_wds,
@@ -92,7 +90,7 @@ def dashboard():
         return f'''<!DOCTYPE html>
 <html><body style="font-family:sans-serif;background:#0b0c10;color:#e8eaf0;padding:2rem">
 <div style="max-width:600px;margin:4rem auto;background:#14171f;border:1px solid #222633;border-radius:12px;padding:2rem">
-  <div style="font-size:2rem;font-weight:800;color:#d4a843;margin-bottom:1rem">EDC Admin</div>
+  <div style="font-size:2rem;font-weight:800;color:#d4a843;margin-bottom:1rem">DSSI Admin</div>
   <h2 style="color:#f87171">Dashboard Error</h2>
   <pre style="color:#9aa3b8;background:#0b0c10;padding:1rem;border-radius:8px;font-size:12px;
               white-space:pre-wrap;word-break:break-all">{type(e).__name__}: {e}</pre>
@@ -219,20 +217,23 @@ def adjust_balance():
 @admin_bp.route('/set-rate', methods=['POST'])
 @admin_required
 def set_rate():
-    db   = get_admin_supabase()
-    rate = float(request.form.get('rate', 0))
+    try:
+        db   = get_admin_supabase()
+        rate = float(request.form.get('rate', 0))
 
-    if rate <= 0:
-        flash('Rate must be greater than zero.', 'error')
-        return redirect(url_for('admin.dashboard'))
+        if rate <= 0:
+            flash('Rate must be greater than zero.', 'error')
+            return redirect(url_for('admin.dashboard'))
 
-    db.table('exchange_rates').insert({
-        'rate':       rate,
-        'created_at': _now(),
-    }).execute()
+        db.table('exchange_rates').insert({
+            'rate': rate,
+        }).execute()
 
-    _log(db, 'set_exchange_rate', 'rate', f'Rate set to {rate} HTG/USDT', _now())
-    flash(f'Exchange rate updated to {rate} HTG per USDT.', 'success')
+        flash(f'Exchange rate updated to {rate} HTG per USDT.', 'success')
+
+    except Exception as e:
+        flash(f'Rate error: {e}', 'error')
+
     return redirect(url_for('admin.dashboard'))
 
 
@@ -348,7 +349,6 @@ def handle_htg_withdrawal(wd_id, action):
         flash(f'HTG withdrawal of {amount_htg} HTG approved.', 'success')
 
     elif action == 'reject':
-        # Refund balance
         profs   = _q(lambda: db.table('profiles').select('balance_htg').eq('id', uid).execute())
         bal_htg = float(profs[0].get('balance_htg') or 0) if profs else 0.0
         db.table('profiles').update({'balance_htg': round(bal_htg + amount_htg, 2)}).eq('id', uid).execute()
