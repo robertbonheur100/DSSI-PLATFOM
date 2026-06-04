@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Matches — DSSI{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark-sm">⚽</span>
+      <span class="sidebar-brand">Football Hub</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('football.hub') }}" class="nav-item">← Hub</a>
+      <a href="{{ url_for('football.standings') }}" class="nav-item">📊 Standings</a>
+      <a href="{{ url_for('football.leaderboard') }}" class="nav-item">🥇 Leaderboard</a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <h1 class="page-title">⚽ Live Matches (API)</h1>
+    </header>
+
+    {% if matches %}
+      <div class="match-grid">
+        {% for m in matches %}
+        <div class="match-card {{ 'match-card--live' if m.status == 'IN_PLAY' else '' }}">
+          {% if m.status == 'IN_PLAY' %}
+            <div class="live-badge">🔴 LIVE</div>
+          {% endif %}
+
+          <div class="match-league">
+            {{ m.competition.name if m.competition else '—' }}
+          </div>
+
+          <div class="match-teams">
+            <div class="team team--home">
+              <span class="team-name">{{ m.homeTeam.name if m.homeTeam else '—' }}</span>
+            </div>
+
+            <div class="match-score">
+              {% if m.score and m.score.fullTime %}
+                {% set home_g = m.score.fullTime.home %}
+                {% set away_g = m.score.fullTime.away %}
+                {% if home_g is not none %}
+                  <span class="score">{{ home_g }} – {{ away_g }}</span>
+                {% else %}
+                  <span class="kick-off">{{ (m.utcDate or '')[:16] }}</span>
+                {% endif %}
+              {% else %}
+                <span class="kick-off">TBD</span>
+              {% endif %}
+            </div>
+
+            <div class="team team--away">
+              <span class="team-name">{{ m.awayTeam.name if m.awayTeam else '—' }}</span>
+            </div>
+          </div>
+
+          <div class="match-meta">
+            <span class="status-badge status--{{ m.status.lower() if m.status else 'scheduled' }}">
+              {{ m.status or 'SCHEDULED' }}
+            </span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <p>No matches from API right now.</p>
+        {% if not api_key %}
+          <p style="color:#f87171">⚠️ FOOTBALL_API_KEY missing in environment variables.</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  </main>
+</div>
+{% endblock %}
