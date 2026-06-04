@@ -1,4 +1,4 @@
-# routes/football.py
+=# routes/football.py
 # ───────────────────────────────────────────────
 # FOOTBALL HUB — matches, standings, leaderboard
 # ───────────────────────────────────────────────
@@ -7,6 +7,7 @@ import os
 import requests
 from datetime import date, timedelta
 from flask import Blueprint, render_template
+
 from utils.supabase_client import get_admin_supabase
 from utils.helpers import login_required
 
@@ -34,6 +35,7 @@ def get_matches():
             timeout=10
         )
 
+        response.raise_for_status()  # ✅ ajoute sa pou evite silent errors
         return response.json()
 
     except Exception as e:
@@ -42,7 +44,7 @@ def get_matches():
 
 
 # ───────────────────────────────────────────────
-# HUB HOME
+# HELPERS
 # ───────────────────────────────────────────────
 def _db():
     return get_admin_supabase()
@@ -57,6 +59,9 @@ def _safe(fn):
         return []
 
 
+# ───────────────────────────────────────────────
+# HUB HOME
+# ───────────────────────────────────────────────
 @football_bp.route('/')
 @login_required
 def hub():
@@ -66,17 +71,25 @@ def hub():
     tomorrow = (date.today() + timedelta(days=1)).isoformat()
 
     matches_today = _safe(lambda: db.table('football_matches')
-                          .select('*').eq('match_date', today).execute())
+                          .select('*')
+                          .eq('match_date', today)
+                          .execute())
 
     matches_tomorrow = _safe(lambda: db.table('football_matches')
-                             .select('*').eq('match_date', tomorrow).execute())
+                             .select('*')
+                             .eq('match_date', tomorrow)
+                             .execute())
 
     matches_finished = _safe(lambda: db.table('football_matches')
-                             .select('*').eq('status', 'finished')
-                             .limit(20).execute())
+                             .select('*')
+                             .eq('status', 'finished')
+                             .limit(20)
+                             .execute())
 
     contests = _safe(lambda: db.table('football_contests')
-                     .select('*').eq('status', 'active').execute())
+                     .select('*')
+                     .eq('status', 'active')
+                     .execute())
 
     return render_template(
         'football/hub.html',
@@ -109,7 +122,10 @@ def standings():
     db = _db()
 
     rows = _safe(lambda: db.table('league_standings')
-                 .select('*').order('league').order('position').execute())
+                 .select('*')
+                 .order('league')
+                 .order('position')
+                 .execute())
 
     leagues = {}
     for r in rows:
@@ -127,10 +143,14 @@ def leaderboard():
     db = _db()
 
     board = _safe(lambda: db.table('global_leaderboard')
-                  .select('*').order('rank').limit(50).execute())
+                  .select('*')
+                  .order('rank')
+                  .limit(50)
+                  .execute())
 
     contests = _safe(lambda: db.table('football_contests')
-                     .select('id, name, status').execute())
+                     .select('id, name, status')
+                     .execute())
 
     return render_template(
         'football/leaderboard.html',
