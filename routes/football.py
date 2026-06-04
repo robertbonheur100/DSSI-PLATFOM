@@ -1,4 +1,4 @@
-=# routes/football.py
+# routes/football.py
 # ───────────────────────────────────────────────
 # FOOTBALL HUB — matches, standings, leaderboard
 # ───────────────────────────────────────────────
@@ -16,9 +16,6 @@ football_bp = Blueprint('football', __name__)
 API_KEY = os.getenv("FOOTBALL_API_KEY")
 
 
-# ───────────────────────────────────────────────
-# FOOTBALL API CALL
-# ───────────────────────────────────────────────
 def get_matches():
     if not API_KEY:
         print("ERROR: FOOTBALL_API_KEY is missing")
@@ -35,7 +32,7 @@ def get_matches():
             timeout=10
         )
 
-        response.raise_for_status()  # ✅ ajoute sa pou evite silent errors
+        response.raise_for_status()
         return response.json()
 
     except Exception as e:
@@ -43,9 +40,6 @@ def get_matches():
         return {"matches": []}
 
 
-# ───────────────────────────────────────────────
-# HELPERS
-# ───────────────────────────────────────────────
 def _db():
     return get_admin_supabase()
 
@@ -59,9 +53,6 @@ def _safe(fn):
         return []
 
 
-# ───────────────────────────────────────────────
-# HUB HOME
-# ───────────────────────────────────────────────
 @football_bp.route('/')
 @login_required
 def hub():
@@ -100,9 +91,6 @@ def hub():
     )
 
 
-# ───────────────────────────────────────────────
-# LIVE MATCHES (API FOOTBALL)
-# ───────────────────────────────────────────────
 @football_bp.route('/matches')
 @login_required
 def matches():
@@ -113,9 +101,6 @@ def matches():
     )
 
 
-# ───────────────────────────────────────────────
-# STANDINGS
-# ───────────────────────────────────────────────
 @football_bp.route('/standings')
 @login_required
 def standings():
@@ -134,9 +119,6 @@ def standings():
     return render_template('football/standings.html', leagues=leagues)
 
 
-# ───────────────────────────────────────────────
-# GLOBAL LEADERBOARD
-# ───────────────────────────────────────────────
 @football_bp.route('/leaderboard')
 @login_required
 def leaderboard():
