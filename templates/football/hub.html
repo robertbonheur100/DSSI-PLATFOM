@@ -206,7 +206,7 @@ document.querySelectorAll('[data-tab]').forEach(item => {
     document.querySelectorAll('[data-tab]').forEach(n => n.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
     this.classList.add('active');
-    const titles = {today:"Today's Matches",tomorrow:"Tomorrow's Matches",results:"Results",contests:"Contests"};
+    const titles = {today:"Today's Matches",tomorrow:"Upcoming Matches",results:"Results",contests:"Contests"};
     document.getElementById('page-title').textContent = titles[name] || name;
   });
 });
