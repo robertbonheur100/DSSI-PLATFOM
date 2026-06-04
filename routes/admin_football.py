@@ -307,25 +307,22 @@ def update_standings():
         existing = _q(lambda: db.table('league_standings')
                       .select('id').eq('league', league)
                       .eq('team_name', team).execute())
-
         payload = {
-            'league':         league,
-            'season':         season,
-            'position':       position,
-            'team_name':      team,
-            'played':         int(request.form.get('played', 0)),
-            'won':            int(request.form.get('won', 0)),
-            'drawn':          int(request.form.get('drawn', 0)),
-            'lost':           int(request.form.get('lost', 0)),
-            'goals_for':      int(request.form.get('goals_for', 0)),
-            'goals_against':  int(request.form.get('goals_against', 0)),
-            'goal_diff':      int(request.form.get('goal_diff', 0)),
-            'points':         int(request.form.get('points', 0)),
-            now = _now()
+    'league': league,
+    'season': season,
+    'position': position,
+    'team_name': team,
+    'played': int(request.form.get('played', 0)),
+    'won': int(request.form.get('won', 0)),
+    'drawn': int(request.form.get('drawn', 0)),
+    'lost': int(request.form.get('lost', 0)),
+    'goals_for': int(request.form.get('goals_for', 0)),
+    'goals_against': int(request.form.get('goals_against', 0)),
+    'goal_diff': int(request.form.get('goal_diff', 0)),
+    'points': int(request.form.get('points', 0)),
+    'updated_at': _now()
+  }
 
-        data = {
-       'updated_at': now,
-        }
         }
 
         if existing:
