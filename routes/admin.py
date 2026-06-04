@@ -228,7 +228,6 @@ def set_rate():
 
     db.table('exchange_rates').insert({
         'rate':       rate,
-        'set_by':     'admin',
         'created_at': _now(),
     }).execute()
 
