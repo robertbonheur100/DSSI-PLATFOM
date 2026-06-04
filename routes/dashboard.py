@@ -286,10 +286,10 @@ def convert_htg_to_usdt():
             flash('Amount must be greater than zero.', 'error')
             return redirect(url_for('dashboard.index'))
 
-        profile_res = db.table('profiles').select('balance_htg, balance').eq('id', uid).execute()
+        profile_res = db.table('profiles').select('balance_htg, balance_usdt').eq('id', uid).execute()
         profile     = profile_res.data[0] if profile_res.data else {}
         bal_htg     = float(profile.get('balance_htg') or 0)
-        bal_usdt    = float(profile.get('balance') or 0)
+        bal_usdt    = float(profile.get('balance_usdt') or 0)
 
         if amount_htg > bal_htg:
             flash('Insufficient HTG balance.', 'error')
@@ -300,8 +300,8 @@ def convert_htg_to_usdt():
         now         = datetime.now(timezone.utc).isoformat()
 
         db.table('profiles').update({
-            'balance_htg': round(bal_htg - amount_htg, 2),
-            'balance':     round(bal_usdt + amount_usdt, 6),
+            'balance_htg':  round(bal_htg - amount_htg, 2),
+            'balance_usdt': round(bal_usdt + amount_usdt, 6),
         }).eq('id', uid).execute()
 
         db.table('htg_transactions').insert({
@@ -339,9 +339,9 @@ def convert_usdt_to_htg():
             flash('Amount must be greater than zero.', 'error')
             return redirect(url_for('dashboard.index'))
 
-        profile_res = db.table('profiles').select('balance_htg, balance').eq('id', uid).execute()
+        profile_res = db.table('profiles').select('balance_htg, balance_usdt').eq('id', uid).execute()
         profile     = profile_res.data[0] if profile_res.data else {}
-        bal_usdt    = float(profile.get('balance') or 0)
+        bal_usdt    = float(profile.get('balance_usdt') or 0)
         bal_htg     = float(profile.get('balance_htg') or 0)
 
         if amount_usdt > bal_usdt:
@@ -353,8 +353,8 @@ def convert_usdt_to_htg():
         now        = datetime.now(timezone.utc).isoformat()
 
         db.table('profiles').update({
-            'balance':     round(bal_usdt - amount_usdt, 6),
-            'balance_htg': round(bal_htg + amount_htg, 2),
+            'balance_usdt': round(bal_usdt - amount_usdt, 6),
+            'balance_htg':  round(bal_htg + amount_htg, 2),
         }).eq('id', uid).execute()
 
         db.table('htg_transactions').insert({
