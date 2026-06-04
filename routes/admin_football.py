@@ -323,8 +323,6 @@ def update_standings():
     'updated_at': _now()
   }
 
-        }
-
         if existing:
             db.table('league_standings').update(payload).eq('id', existing[0]['id']).execute()
         else:
