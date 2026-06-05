@@ -1,0 +1,164 @@
+{# templates/football/contest_detail.html #}
+{% extends 'base.html' %}
+{% block title %}{{ contest.name }} — DSSI{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block content %}
+
+<div class="app-layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark-sm">🏆</span>
+      <span class="sidebar-brand">Contest</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('contests.index') }}" class="nav-item">← All Contests</a>
+      <a href="{{ url_for('football.hub') }}" class="nav-item">⚽ Football Hub</a>
+      <a href="{{ url_for('football.leaderboard') }}" class="nav-item">🥇 Leaderboard</a>
+      <a href="{{ url_for('dashboard.index') }}" class="nav-item">← Dashboard</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <h1 class="page-title">🏆 {{ contest.name }}</h1>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash--{{ cat }}"><span>{{ msg }}</span></div>
+      {% endfor %}
+    {% endwith %}
+
+    {# ── Contest Info ── #}
+    <div class="card" style="margin:1.5rem">
+      <div class="card-header">
+        <h3>{{ contest.name }}</h3>
+        <span class="status-badge status--{{ contest.status }}">{{ contest.status.upper() }}</span>
+      </div>
+      <div style="padding:1.25rem;display:flex;flex-wrap:wrap;gap:1.5rem">
+        <div class="stat-card stat-card--gold" style="flex:1;min-width:140px">
+          <div class="stat-icon">💰</div>
+          <div class="stat-body">
+            <p class="stat-label">Entry Fee</p>
+            <p class="stat-value">${{ "%.2f"|format(entry_fee) }}</p>
+          </div>
+        </div>
+        <div class="stat-card" style="flex:1;min-width:140px">
+          <div class="stat-icon">🥇</div>
+          <div class="stat-body">
+            <p class="stat-label">1st Prize</p>
+            <p class="stat-value" style="color:var(--gold)">${{ "%.0f"|format(contest.prize_1st or 100) }}</p>
+          </div>
+        </div>
+        <div class="stat-card" style="flex:1;min-width:140px">
+          <div class="stat-icon">🥈</div>
+          <div class="stat-body">
+            <p class="stat-label">2nd Prize</p>
+            <p class="stat-value">${{ "%.0f"|format(contest.prize_2nd or 50) }}</p>
+          </div>
+        </div>
+        <div class="stat-card" style="flex:1;min-width:140px">
+          <div class="stat-icon">💵</div>
+          <div class="stat-body">
+            <p class="stat-label">Your Balance</p>
+            <p class="stat-value {{ 'text-green' if can_afford else 'text-red' }}">${{ "%.2f"|format(balance) }}</p>
+          </div>
+        </div>
+      </div>
+
+      {% if contest.description %}
+      <div style="padding:0 1.25rem 1rem;color:var(--text-2);font-size:0.9rem">{{ contest.description }}</div>
+      {% endif %}
+
+      {% if contest.start_date or contest.end_date %}
+      <div style="padding:0 1.25rem 1rem;font-size:0.82rem;color:var(--text-3)">
+        {% if contest.start_date %}📅 Start: {{ contest.start_date }}{% endif %}
+        {% if contest.end_date %} &nbsp;·&nbsp; 🏁 End: {{ contest.end_date }}{% endif %}
+      </div>
+      {% endif %}
+
+      <div class="info-box" style="margin:0 1.25rem 1.25rem">
+        🏆 <strong>Scoring:</strong>
+        Correct winner <strong>10 pts</strong> ·
+        Exact score <strong>30 pts</strong> ·
+        First scorer <strong>25 pts</strong> ·
+        Corners <strong>15 pts</strong>
+      </div>
+
+      {# Join / Already joined button #}
+      <div style="padding:0 1.25rem 1.5rem">
+        {% if already_joined %}
+          <div class="info-box" style="margin-bottom:0.75rem">
+            ✅ You have already joined this contest.
+          </div>
+          <a href="{{ url_for('contests.predict', contest_id=contest.id) }}"
+             class="btn btn--primary">✏️ Go to My Predictions</a>
+        {% elif contest.status == 'finished' %}
+          <button class="btn btn--outline" disabled>Contest Finished</button>
+        {% else %}
+          {% if not can_afford %}
+          <div class="flash flash--error" style="margin-bottom:0.75rem">
+            <span>⚠️ Insufficient balance. You need ${{ "%.2f"|format(entry_fee) }} USDT. Your balance: ${{ "%.2f"|format(balance) }}. Please deposit first.</span>
+          </div>
+          <a href="{{ url_for('dashboard.index') }}" class="btn btn--outline" style="margin-right:0.5rem">💰 Deposit USDT</a>
+          {% endif %}
+          <form method="POST" action="{{ url_for('contests.join', contest_id=contest.id) }}" style="display:inline">
+            <button type="submit" class="btn btn--primary" {{ 'disabled' if not can_afford else '' }}
+              onclick="return confirm('Pay ${{ "%.2f"|format(entry_fee) }} USDT to join this contest?')">
+              🏆 Join for ${{ "%.2f"|format(entry_fee) }}
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Match List ── #}
+    <div style="padding:0 1.5rem 1rem">
+      <h3 style="font-family:var(--font-head);margin-bottom:1rem">⚽ Matches in this Contest</h3>
+    </div>
+
+    {% if matches %}
+      {% for m in matches %}
+      <div class="card" style="margin:0 1.5rem 1rem">
+        <div class="card-header">
+          <h3>{{ m.home_team }} vs {{ m.away_team }}</h3>
+          <span class="status-badge status--{{ m.status }}">{{ m.status.upper() }}</span>
+        </div>
+        <div style="padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <div class="team" style="display:flex;align-items:center;gap:0.5rem;flex:1;justify-content:flex-end">
+            {% if m.home_logo %}<img src="{{ m.home_logo }}" style="width:32px;height:32px;border-radius:50%">{% endif %}
+            <strong style="font-size:1rem">{{ m.home_team }}</strong>
+          </div>
+          <div style="text-align:center;min-width:80px">
+            {% if m.status == 'finished' %}
+              <span style="font-size:1.4rem;font-weight:800;color:var(--gold)">{{ m.home_score }} – {{ m.away_score }}</span>
+            {% else %}
+              <span style="font-size:0.85rem;color:var(--text-2)">{{ m.match_date }}<br>{{ (m.match_time or 'TBD')[:5] }}</span>
+            {% endif %}
+          </div>
+          <div class="team" style="display:flex;align-items:center;gap:0.5rem;flex:1">
+            <strong style="font-size:1rem">{{ m.away_team }}</strong>
+            {% if m.away_logo %}<img src="{{ m.away_logo }}" style="width:32px;height:32px;border-radius:50%">{% endif %}
+          </div>
+        </div>
+        <div style="padding:0 1.25rem 0.75rem;font-size:0.82rem;color:var(--text-3)">
+          {{ m.league }} &nbsp;·&nbsp; {{ m.match_date }}
+          {% if m.status == 'finished' and m.first_scorer %}
+            &nbsp;·&nbsp; 1st scorer: <strong>{{ m.first_scorer }}</strong>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state" style="margin:1.5rem">
+        <p>No matches added to this contest yet. Check back soon!</p>
+      </div>
+    {% endif %}
+
+  </main>
+</div>
+{% endblock %}
