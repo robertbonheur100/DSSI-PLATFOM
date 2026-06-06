@@ -9,7 +9,6 @@ from utils.helpers import login_required
 football_bp = Blueprint('football', __name__)
 API_KEY = os.getenv("FOOTBALL_API_KEY")
 
-# Lig yo ak ID yo nan football-data.org
 LEAGUES = [
     {"id": 2021, "name": "Premier League",   "flag": "ENG"},
     {"id": 2014, "name": "La Liga",          "flag": "ESP"},
@@ -35,7 +34,6 @@ def _safe(fn):
 
 
 def _api_get(path, params=None):
-    """Rele football-data.org API."""
     if not API_KEY:
         return None
     try:
@@ -55,7 +53,6 @@ def _api_get(path, params=None):
 
 
 def _get_api_matches(date_from=None, date_to=None, status=None):
-    """Rekipere match yo nan API."""
     params = {}
     if date_from:
         params['dateFrom'] = date_from
@@ -100,10 +97,6 @@ def _get_api_matches(date_from=None, date_to=None, status=None):
 
 
 def _get_api_standings(competition_id):
-    """
-    Rekipere klasman yon lig nan API.
-    Retounen yon liste ekip ordone pa pozisyon.
-    """
     data = _api_get(f"competitions/{competition_id}/standings")
     if not data:
         return []
@@ -131,9 +124,9 @@ def _get_api_standings(competition_id):
     return []
 
 
-# ---------------------------------------------
+# ─────────────────────────────────────────────
 # HUB
-# ---------------------------------------------
+# ─────────────────────────────────────────────
 @football_bp.route('/')
 @login_required
 def hub():
@@ -165,9 +158,9 @@ def hub():
     )
 
 
-# ---------------------------------------------
-# MATCHES (raw API page)
-# ---------------------------------------------
+# ─────────────────────────────────────────────
+# MATCHES
+# ─────────────────────────────────────────────
 @football_bp.route('/matches')
 @login_required
 def matches():
@@ -179,9 +172,9 @@ def matches():
     )
 
 
-# ---------------------------------------------
-# STANDINGS -- chache otomatikman nan API
-# ---------------------------------------------
+# ─────────────────────────────────────────────
+# STANDINGS
+# ─────────────────────────────────────────────
 @football_bp.route('/standings')
 @login_required
 def standings():
@@ -197,7 +190,6 @@ def standings():
                 "teams": teams,
             })
 
-    # Backup: si API pa reponn, chache nan Supabase
     if not leagues_data:
         db   = _db()
         rows = _safe(lambda: db.table('league_standings')
@@ -214,17 +206,16 @@ def standings():
                 "teams": teams,
             })
 
-    api_ok = bool(API_KEY)
     return render_template(
         'football/standings.html',
         leagues_data=leagues_data,
-        api_ok=api_ok
+        api_ok=bool(API_KEY)
     )
 
 
-# ---------------------------------------------
+# ─────────────────────────────────────────────
 # LEADERBOARD
-# ---------------------------------------------
+# ─────────────────────────────────────────────
 @football_bp.route('/leaderboard')
 @login_required
 def leaderboard():
@@ -240,23 +231,47 @@ def leaderboard():
     )
 
 
-# ---------------------------------------------
-# CONTEST LEADERBOARD
-# ---------------------------------------------
+# ─────────────────────────────────────────────
+# CONTEST LEADERBOARD — ak participants
+# ─────────────────────────────────────────────
 @football_bp.route('/leaderboard/<contest_id>')
 @login_required
 def contest_leaderboard(contest_id):
     db = _db()
+
     contest_rows = _safe(lambda: db.table('football_contests')
                          .select('*').eq('id', contest_id).execute())
     if not contest_rows:
         return "Contest not found", 404
     contest = contest_rows[0]
-    board   = _safe(lambda: db.table('contest_leaderboard')
-                    .select('*').eq('contest_id', contest_id)
-                    .order('rank').execute())
+
+    # Tout patisipan yo ki peye
+    entry_rows = _safe(lambda: db.table('contest_entries')
+                       .select('*').eq('contest_id', contest_id)
+                       .eq('paid', True)
+                       .order('total_points', desc=True).execute())
+
+    # Ajoute username pou chak patisipan
+    participants = []
+    for e in entry_rows:
+        uid  = e['user_id']
+        prof = _safe(lambda: db.table('profiles')
+                     .select('username').eq('id', uid).execute())
+        username = prof[0]['username'] if prof else '—'
+        participants.append({
+            'username':     username,
+            'total_points': e.get('total_points', 0),
+            'paid_at':      e.get('paid_at', ''),
+            'created_at':   e.get('created_at', ''),
+        })
+
+    # Leaderboard = sèlman moun ki gen pwen
+    board = [p for p in participants if (p['total_points'] or 0) > 0]
+    board.sort(key=lambda x: x['total_points'], reverse=True)
+
     return render_template(
         'football/contest_leaderboard.html',
         contest=contest,
+        participants=participants,
         board=board
     )
