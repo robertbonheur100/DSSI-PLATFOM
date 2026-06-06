@@ -1,7 +1,4 @@
 # routes/football.py
-# ───────────────────────────────────────────────
-# FOOTBALL HUB — matches, standings, leaderboard
-# ───────────────────────────────────────────────
 import os
 import requests
 from datetime import timedelta, datetime, timezone
@@ -12,15 +9,15 @@ from utils.helpers import login_required
 football_bp = Blueprint('football', __name__)
 API_KEY = os.getenv("FOOTBALL_API_KEY")
 
-# ── Lig yo ak ID yo nan football-data.org ──
+# Lig yo ak ID yo nan football-data.org
 LEAGUES = [
-    {"id": 2021, "name": "Premier League",    "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
-    {"id": 2014, "name": "La Liga",           "flag": "🇪🇸"},
-    {"id": 2019, "name": "Serie A",           "flag": "🇮🇹"},
-    {"id": 2002, "name": "Bundesliga",        "flag": "🇩🇪"},
-    {"id": 2015, "name": "Ligue 1",           "flag": "🇫🇷"},
-    {"id": 2001, "name": "Champions League",  "flag": "🌟"},
-    {"id": 2000, "name": "World Cup",         "flag": "🌍"},
+    {"id": 2021, "name": "Premier League",   "flag": "ENG"},
+    {"id": 2014, "name": "La Liga",          "flag": "ESP"},
+    {"id": 2019, "name": "Serie A",          "flag": "ITA"},
+    {"id": 2002, "name": "Bundesliga",       "flag": "GER"},
+    {"id": 2015, "name": "Ligue 1",          "flag": "FRA"},
+    {"id": 2001, "name": "Champions League", "flag": "UCL"},
+    {"id": 2000, "name": "World Cup",        "flag": "WC"},
 ]
 
 
@@ -60,9 +57,12 @@ def _api_get(path, params=None):
 def _get_api_matches(date_from=None, date_to=None, status=None):
     """Rekipere match yo nan API."""
     params = {}
-    if date_from: params['dateFrom'] = date_from
-    if date_to:   params['dateTo']   = date_to
-    if status:    params['status']   = status
+    if date_from:
+        params['dateFrom'] = date_from
+    if date_to:
+        params['dateTo'] = date_to
+    if status:
+        params['status'] = status
 
     data = _api_get("matches", params)
     if not data:
@@ -85,11 +85,11 @@ def _get_api_matches(date_from=None, date_to=None, status=None):
         utc_date = m.get("utcDate", "")
         converted.append({
             "id":         m.get("id"),
-            "home_team":  home.get("name", "—"),
-            "away_team":  away.get("name", "—"),
+            "home_team":  home.get("name", "-"),
+            "away_team":  away.get("name", "-"),
             "home_logo":  home.get("crest", ""),
             "away_logo":  away.get("crest", ""),
-            "league":     m.get("competition", {}).get("name", "—"),
+            "league":     m.get("competition", {}).get("name", "-"),
             "match_date": utc_date[:10] if utc_date else "",
             "match_time": utc_date[11:16] if len(utc_date) > 10 else "",
             "status":     status_mapped,
@@ -102,22 +102,20 @@ def _get_api_matches(date_from=None, date_to=None, status=None):
 def _get_api_standings(competition_id):
     """
     Rekipere klasman yon lig nan API.
-    Retounen yon liste ekip òdone pa pozisyon.
+    Retounen yon liste ekip ordone pa pozisyon.
     """
     data = _api_get(f"competitions/{competition_id}/standings")
     if not data:
         return []
 
-    standings_list = data.get("standings", [])
-    # Pran "TOTAL" standing (pa HOME oswa AWAY)
-    for s in standings_list:
+    for s in data.get("standings", []):
         if s.get("type") == "TOTAL":
             teams = []
             for row in s.get("table", []):
                 team = row.get("team", {})
                 teams.append({
                     "position":      row.get("position", 0),
-                    "team_name":     team.get("name", "—"),
+                    "team_name":     team.get("name", "-"),
                     "team_logo":     team.get("crest", ""),
                     "played":        row.get("playedGames", 0),
                     "won":           row.get("won", 0),
@@ -133,9 +131,9 @@ def _get_api_standings(competition_id):
     return []
 
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 # HUB
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 @football_bp.route('/')
 @login_required
 def hub():
@@ -147,10 +145,11 @@ def hub():
 
     matches_today    = _get_api_matches(date_from=today, date_to=today)
     matches_tomorrow = _get_api_matches(date_from=tomorrow, date_to=week_end)
-    matches_finished = _get_api_matches(date_from=week_ago, date_to=today, status="FINISHED")[:20]
+    matches_finished = _get_api_matches(
+        date_from=week_ago, date_to=today, status="FINISHED"
+    )[:20]
 
     db = _db()
-    # Montre active AK upcoming contests tou de
     contests = _safe(lambda: db.table('football_contests')
                      .select('*')
                      .in_('status', ['active', 'upcoming'])
@@ -166,21 +165,23 @@ def hub():
     )
 
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 # MATCHES (raw API page)
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 @football_bp.route('/matches')
 @login_required
 def matches():
     now   = datetime.now(timezone.utc)
     today = now.strftime('%Y-%m-%d')
-    return render_template('football/matches.html',
-                           matches=_get_api_matches(date_from=today, date_to=today))
+    return render_template(
+        'football/matches.html',
+        matches=_get_api_matches(date_from=today, date_to=today)
+    )
 
 
-# ─────────────────────────────────────────────
-# STANDINGS — chache otomatikman nan API
-# ─────────────────────────────────────────────
+# ---------------------------------------------
+# STANDINGS -- chache otomatikman nan API
+# ---------------------------------------------
 @football_bp.route('/standings')
 @login_required
 def standings():
@@ -196,8 +197,7 @@ def standings():
                 "teams": teams,
             })
 
-    # Si API pa reponn (rate limit oswa free plan pa sipòte lig sa),
-    # tonbe sou done Supabase kòm backup
+    # Backup: si API pa reponn, chache nan Supabase
     if not leagues_data:
         db   = _db()
         rows = _safe(lambda: db.table('league_standings')
@@ -209,20 +209,22 @@ def standings():
         for lname, teams in db_leagues.items():
             leagues_data.append({
                 "name":  lname,
-                "flag":  "📊",
+                "flag":  "DB",
                 "id":    None,
                 "teams": teams,
             })
 
     api_ok = bool(API_KEY)
-    return render_template('football/standings.html',
-                           leagues_data=leagues_data,
-                           api_ok=api_ok)
+    return render_template(
+        'football/standings.html',
+        leagues_data=leagues_data,
+        api_ok=api_ok
+    )
 
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 # LEADERBOARD
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 @football_bp.route('/leaderboard')
 @login_required
 def leaderboard():
@@ -231,12 +233,16 @@ def leaderboard():
                      .select('*').order('rank').limit(50).execute())
     contests = _safe(lambda: db.table('football_contests')
                      .select('id, name, status').execute())
-    return render_template('football/leaderboard.html', board=board, contests=contests)
+    return render_template(
+        'football/leaderboard.html',
+        board=board,
+        contests=contests
+    )
 
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 # CONTEST LEADERBOARD
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 @football_bp.route('/leaderboard/<contest_id>')
 @login_required
 def contest_leaderboard(contest_id):
@@ -247,6 +253,10 @@ def contest_leaderboard(contest_id):
         return "Contest not found", 404
     contest = contest_rows[0]
     board   = _safe(lambda: db.table('contest_leaderboard')
-                    .select('*').eq('contest_id', contest_id).order('rank').execute())
-    return render_template('football/contest_leaderboard.html',
-                           contest=contest, board=board)
+                    .select('*').eq('contest_id', contest_id)
+                    .order('rank').execute())
+    return render_template(
+        'football/contest_leaderboard.html',
+        contest=contest,
+        board=board
+    )
