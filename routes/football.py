@@ -19,13 +19,12 @@ LEAGUES = [
     {"id": 2000, "name": "World Cup",        "flag": "WC"},
 ]
 
-# TTL pa tip done -- match live pi kout, standings pi long
 TTL = {
-    "live":      15,    # 15 minit -- match k ap jwe yo
-    "today":     30,   # 30 minit -- match jodi a
-    "upcoming":  360,  # 6 zèdtan -- match kap vini
-    "finished":  360,  # 6 zèdtan -- rezilta fini
-    "standings": 720,  # 12 zèdtan -- klasman
+    "live":      15,
+    "today":     30,
+    "upcoming":  360,
+    "finished":  360,
+    "standings": 720,
 }
 
 
@@ -46,16 +45,7 @@ def _now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
-# ─────────────────────────────────────────────
-# CACHE HELPERS
-# ─────────────────────────────────────────────
-
 def _cache_get(db, cache_key, ttl_minutes):
-    """
-    Li kache nan Supabase.
-    Retounen done si kache toujou valid,
-    sinon retounen None.
-    """
     try:
         res = db.table('api_cache') \
             .select('data, cached_at') \
@@ -72,10 +62,8 @@ def _cache_get(db, cache_key, ttl_minutes):
         age_minutes = (datetime.now(timezone.utc) - cached_at).total_seconds() / 60
 
         if age_minutes < ttl_minutes:
-            print(f"[CACHE HIT] {cache_key} ({int(age_minutes)}min old, TTL={ttl_minutes}min)")
             return row['data']
 
-        print(f"[CACHE EXPIRED] {cache_key} ({int(age_minutes)}min old)")
         return None
 
     except Exception as e:
@@ -84,7 +72,6 @@ def _cache_get(db, cache_key, ttl_minutes):
 
 
 def _cache_set(db, cache_key, data):
-    """Sove done nan Supabase kache (upsert)."""
     try:
         existing = db.table('api_cache') \
             .select('id') \
@@ -103,15 +90,12 @@ def _cache_set(db, cache_key, data):
                 'cached_at': _now_iso(),
             }).execute()
 
-        print(f"[CACHE SET] {cache_key} ({len(str(data))} chars)")
     except Exception as e:
         print(f"[CACHE SET ERROR] {e}")
 
 
 def _api_get(path, params=None):
-    """Rele football-data.org API."""
     if not API_KEY:
-        print("ERROR: FOOTBALL_API_KEY manke")
         return None
     try:
         res = requests.get(
@@ -122,7 +106,7 @@ def _api_get(path, params=None):
         )
         if res.status_code == 200:
             return res.json()
-        print(f"[API {res.status_code}] {path} | {res.text[:200]}")
+        print(f"[API {res.status_code}] {path}")
         return None
     except Exception as e:
         print(f"[API ERROR] {e}")
@@ -130,7 +114,6 @@ def _api_get(path, params=None):
 
 
 def _convert_match(m):
-    """Konvèti yon match API → dikteyè nou an."""
     home       = m.get("homeTeam", {})
     away       = m.get("awayTeam", {})
     ft         = m.get("score", {}).get("fullTime", {})
@@ -146,109 +129,85 @@ def _convert_match(m):
 
     utc_date = m.get("utcDate", "")
     return {
-        "id":           m.get("id"),
-        "home_team":    home.get("name", "-"),
-        "away_team":    away.get("name", "-"),
-        "home_logo":    home.get("crest", ""),
-        "away_logo":    away.get("crest", ""),
-        "league":       m.get("competition", {}).get("name", "-"),
-        "league_logo":  m.get("competition", {}).get("emblem", ""),
-        "matchday":     m.get("matchday"),
-        "match_date":   utc_date[:10] if utc_date else "",
-        "match_time":   utc_date[11:16] if len(utc_date) > 10 else "",
-        "status":       status_mapped,
-        "api_status":   api_status,
-        "home_score":   ft.get("home"),
-        "away_score":   ft.get("away"),
-        "home_ht":      ht.get("home"),   # mi-tan
-        "away_ht":      ht.get("away"),
-        "minute":       m.get("minute"),  # minit match live
-        "venue":        m.get("venue", ""),
-        "referee":      m.get("referees", [{}])[0].get("name", "") if m.get("referees") else "",
+        "id":          m.get("id"),
+        "home_team":   home.get("name", "-"),
+        "away_team":   away.get("name", "-"),
+        "home_logo":   home.get("crest", ""),
+        "away_logo":   away.get("crest", ""),
+        "league":      m.get("competition", {}).get("name", "-"),
+        "league_logo": m.get("competition", {}).get("emblem", ""),
+        "matchday":    m.get("matchday"),
+        "match_date":  utc_date[:10] if utc_date else "",
+        "match_time":  utc_date[11:16] if len(utc_date) > 10 else "",
+        "status":      status_mapped,
+        "api_status":  api_status,
+        "home_score":  ft.get("home"),
+        "away_score":  ft.get("away"),
+        "home_ht":     ht.get("home"),
+        "away_ht":     ht.get("away"),
+        "minute":      m.get("minute"),
+        "venue":       m.get("venue", ""),
+        "referee":     m.get("referees", [{}])[0].get("name", "") if m.get("referees") else "",
     }
 
 
-# ─────────────────────────────────────────────
-# MATCHES JODI A (cache 10 min)
-# ─────────────────────────────────────────────
 def _get_matches_today():
     db    = _db()
     today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     key   = f"matches_today_{today}"
-
     cached = _cache_get(db, key, TTL["today"])
     if cached is not None:
         return cached
-
     data = _api_get("matches", {"dateFrom": today, "dateTo": today})
     if not data:
         return []
-
     result = [_convert_match(m) for m in data.get("matches", [])]
     _cache_set(db, key, result)
     return result
 
 
-# ─────────────────────────────────────────────
-# MATCH K AP JWE LIVE (cache 5 min)
-# ─────────────────────────────────────────────
 def _get_matches_live():
     db  = _db()
     key = "matches_live"
-
     cached = _cache_get(db, key, TTL["live"])
     if cached is not None:
         return cached
-
     data = _api_get("matches", {"status": "LIVE"})
     if not data:
-        # Eseye IN_PLAY tou
         data = _api_get("matches", {"status": "IN_PLAY"})
     if not data:
         return []
-
     result = [_convert_match(m) for m in data.get("matches", [])]
     _cache_set(db, key, result)
     return result
 
 
-# ─────────────────────────────────────────────
-# MATCH KAP VINI -- 7 jou (cache 2h)
-# ─────────────────────────────────────────────
 def _get_matches_upcoming():
     db       = _db()
     now      = datetime.now(timezone.utc)
     tomorrow = (now + timedelta(days=1)).strftime('%Y-%m-%d')
     week_end = (now + timedelta(days=7)).strftime('%Y-%m-%d')
     key      = f"matches_upcoming_{tomorrow}_{week_end}"
-
     cached = _cache_get(db, key, TTL["upcoming"])
     if cached is not None:
         return cached
-
     data = _api_get("matches", {"dateFrom": tomorrow, "dateTo": week_end})
     if not data:
         return []
-
     result = [_convert_match(m) for m in data.get("matches", [])]
     _cache_set(db, key, result)
     return result
 
 
-# ─────────────────────────────────────────────
-# REZILTA FINI -- 7 jou pase (cache 6h)
-# ─────────────────────────────────────────────
 def _get_matches_finished():
-    db      = _db()
-    now     = datetime.now(timezone.utc)
-    today   = now.strftime('%Y-%m-%d')
+    db       = _db()
+    now      = datetime.now(timezone.utc)
+    today    = now.strftime('%Y-%m-%d')
     week_ago = (now - timedelta(days=7)).strftime('%Y-%m-%d')
-    key     = f"matches_finished_{week_ago}_{today}"
-
+    key      = f"matches_finished_{week_ago}_{today}"
     cached = _cache_get(db, key, TTL["finished"])
     if cached is not None:
         return cached
-
     data = _api_get("matches", {
         "dateFrom": week_ago,
         "dateTo":   today,
@@ -256,27 +215,20 @@ def _get_matches_finished():
     })
     if not data:
         return []
-
     result = [_convert_match(m) for m in data.get("matches", [])][:30]
     _cache_set(db, key, result)
     return result
 
 
-# ─────────────────────────────────────────────
-# STANDINGS -- chak lig (cache 2h)
-# ─────────────────────────────────────────────
 def _get_api_standings(competition_id):
     db  = _db()
     key = f"standings_{competition_id}"
-
     cached = _cache_get(db, key, TTL["standings"])
     if cached is not None:
         return cached
-
     data = _api_get(f"competitions/{competition_id}/standings")
     if not data:
         return []
-
     teams = []
     for s in data.get("standings", []):
         if s.get("type") == "TOTAL":
@@ -297,7 +249,6 @@ def _get_api_standings(competition_id):
                     "form":          row.get("form", ""),
                 })
             break
-
     if teams:
         _cache_set(db, key, teams)
     return teams
@@ -309,20 +260,11 @@ def _get_api_standings(competition_id):
 @football_bp.route('/')
 @login_required
 def hub():
-    # Match live -- chache 5 min
-    matches_live = _get_matches_live()
-
-    # Match jodi a -- chache 10 min
+    matches_live  = _get_matches_live()
     matches_today = _get_matches_today()
-
-    # Retire match live yo nan today pou pa double
-    live_ids = {m["id"] for m in matches_live}
+    live_ids      = {m["id"] for m in matches_live}
     matches_today = [m for m in matches_today if m["id"] not in live_ids]
-
-    # Match kap vini -- chache 2h
     matches_tomorrow = _get_matches_upcoming()
-
-    # Rezilta -- chache 6h
     matches_finished = _get_matches_finished()
 
     db = _db()
@@ -343,7 +285,7 @@ def hub():
 
 
 # ─────────────────────────────────────────────
-# MATCHES PAGE (raw)
+# MATCHES PAGE
 # ─────────────────────────────────────────────
 @football_bp.route('/matches')
 @login_required
@@ -352,7 +294,6 @@ def matches():
     matches_today = _get_matches_today()
     live_ids      = {m["id"] for m in matches_live}
     matches_today = [m for m in matches_today if m["id"] not in live_ids]
-
     return render_template(
         'football/matches.html',
         matches_live=matches_live,
@@ -367,7 +308,6 @@ def matches():
 @login_required
 def standings():
     leagues_data = []
-
     for league in LEAGUES:
         teams = _get_api_standings(league["id"])
         if teams:
@@ -377,8 +317,6 @@ def standings():
                 "id":    league["id"],
                 "teams": teams,
             })
-
-    # Backup Supabase si API pa reponn
     if not leagues_data:
         db   = _db()
         rows = _safe(lambda: db.table('league_standings')
@@ -393,7 +331,6 @@ def standings():
                 "id":    None,
                 "teams": teams,
             })
-
     return render_template(
         'football/standings.html',
         leagues_data=leagues_data,
@@ -420,22 +357,57 @@ def leaderboard():
 
 
 # ─────────────────────────────────────────────
-# CONTEST LEADERBOARD
+# CONTEST LEADERBOARD — KORIJE
 # ─────────────────────────────────────────────
 @football_bp.route('/leaderboard/<contest_id>')
 @login_required
 def contest_leaderboard(contest_id):
     db = _db()
+
     contest_rows = _safe(lambda: db.table('football_contests')
                          .select('*').eq('id', contest_id).execute())
     if not contest_rows:
         return "Contest not found", 404
     contest = contest_rows[0]
-    board   = _safe(lambda: db.table('contest_leaderboard')
-                    .select('*').eq('contest_id', contest_id)
-                    .order('rank').execute())
+
+    # Tout patisipan ki peye
+    entry_rows = _safe(lambda: db.table('contest_entries')
+                       .select('*').eq('contest_id', contest_id)
+                       .eq('paid', True)
+                       .order('total_points', desc=True).execute())
+
+    # Jwenn tout user IDs yon sèl fwa
+    user_ids = [e['user_id'] for e in entry_rows]
+
+    profiles = {}
+    if user_ids:
+        try:
+            prof_res = db.table('profiles') \
+                .select('id, username') \
+                .in_('id', user_ids) \
+                .execute()
+            for p in (prof_res.data or []):
+                profiles[p['id']] = p['username']
+        except Exception as e:
+            print(f"[PROFILES ERROR] {e}")
+
+    # Konstui liste patisipan
+    participants = []
+    for e in entry_rows:
+        participants.append({
+            'username':     profiles.get(e['user_id'], '—'),
+            'total_points': e.get('total_points', 0) or 0,
+            'paid_at':      e.get('paid_at', ''),
+            'created_at':   e.get('created_at', ''),
+        })
+
+    # Leaderboard = sèlman moun ki gen pwen
+    board = [p for p in participants if p['total_points'] > 0]
+    board.sort(key=lambda x: x['total_points'], reverse=True)
+
     return render_template(
         'football/contest_leaderboard.html',
         contest=contest,
+        participants=participants,
         board=board
     )
