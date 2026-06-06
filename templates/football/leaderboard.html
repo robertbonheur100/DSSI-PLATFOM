@@ -27,7 +27,6 @@
     {# ── TOP 3 PODIUM ── #}
     {% if board %}
     <div class="podium-row">
-      {# 2nd place #}
       {% if board|length >= 2 %}
       <div class="podium-card podium-card--2nd">
         <div class="podium-rank">🥈</div>
@@ -36,17 +35,13 @@
         <div class="podium-pts">{{ board[1].total_points or 0 }} pts</div>
       </div>
       {% endif %}
-
-      {# 1st place #}
       <div class="podium-card podium-card--1st">
+        <div class="podium-crown">👑</div>
         <div class="podium-rank">🥇</div>
         <div class="podium-avatar">{{ board[0].username[0].upper() }}</div>
         <div class="podium-name">{{ board[0].username }}</div>
         <div class="podium-pts">{{ board[0].total_points or 0 }} pts</div>
-        <div class="podium-crown">👑</div>
       </div>
-
-      {# 3rd place #}
       {% if board|length >= 3 %}
       <div class="podium-card podium-card--3rd">
         <div class="podium-rank">🥉</div>
@@ -60,7 +55,7 @@
 
     {# ── FULL RANKING TABLE ── #}
     <div class="card">
-      <div class="card-header"><h3>All Predictors</h3></div>
+      <div class="card-header"><h3>🏆 All Predictors</h3></div>
       <div class="table-wrap">
         <table class="data-table">
           <thead>
@@ -78,7 +73,7 @@
               {% if loop.index == 1 %}🥇
               {% elif loop.index == 2 %}🥈
               {% elif loop.index == 3 %}🥉
-              {% else %}<strong>#{{ row.rank }}</strong>
+              {% else %}<strong>#{{ loop.index }}</strong>
               {% endif %}
             </td>
             <td><strong>{{ row.username }}</strong></td>
@@ -96,7 +91,7 @@
     {# ── PER-CONTEST LINKS ── #}
     {% if contests %}
     <div class="card">
-      <div class="card-header"><h3>Contest Rankings</h3></div>
+      <div class="card-header"><h3>📋 Contest Rankings</h3></div>
       <div style="padding:1rem 1.25rem;display:flex;flex-wrap:wrap;gap:0.75rem">
         {% for c in contests %}
         <a href="{{ url_for('football.contest_leaderboard', contest_id=c.id) }}"
