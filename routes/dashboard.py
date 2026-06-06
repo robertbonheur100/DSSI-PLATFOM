@@ -19,6 +19,18 @@ def _get_rate(db):
     return 130.0
 
 
+def _get_profile(db, uid):
+    """
+    Retounen profil user a.
+    !! Kolòn USDT OFISYEL se 'balance' !!
+    'balance_usdt' pa itilize ankò — tout kote itilize 'balance'.
+    """
+    res = db.table('profiles').select('*').eq('id', uid).execute()
+    return res.data[0] if res.data else {
+        'username': 'User', 'balance': 0, 'balance_htg': 0
+    }
+
+
 # ─────────────────────────────────────────────
 # DASHBOARD HOME
 # ─────────────────────────────────────────────
@@ -29,10 +41,7 @@ def index():
     uid = session['user_id']
 
     try:
-        profile_res = db.table('profiles').select('*').eq('id', uid).execute()
-        profile = profile_res.data[0] if profile_res.data else {
-            'username': 'User', 'balance': 0, 'balance_htg': 0, 'balance_usdt': 0
-        }
+        profile = _get_profile(db, uid)
 
         deposits = db.table('deposits')\
             .select('*').eq('user_id', uid)\
@@ -140,7 +149,7 @@ def deposit():
 
 
 # ─────────────────────────────────────────────
-# WITHDRAW
+# WITHDRAW (USDT)
 # ─────────────────────────────────────────────
 @dashboard_bp.route('/withdraw', methods=['POST'])
 @login_required
@@ -153,16 +162,16 @@ def withdraw():
         wallet  = request.form.get('wallet_address', '').strip()
         network = request.form.get('network', '')
 
-        profile_res = db.table('profiles').select('balance').eq('id', uid).execute()
-        profile     = profile_res.data[0] if profile_res.data else {'balance': 0}
-        balance     = profile.get('balance', 0)
+        # !! Kolòn USDT ofisyel = 'balance' !!
+        profile = _get_profile(db, uid)
+        balance = float(profile.get('balance') or 0)
 
         if amount <= 0:
             flash('Amount must be greater than zero.', 'error')
             return redirect(url_for('dashboard.index'))
 
         if amount > balance:
-            flash('Insufficient balance.', 'error')
+            flash(f'Not enough money. Balans ou: ${balance:.2f} USDT.', 'error')
             return redirect(url_for('dashboard.index'))
 
         if not wallet:
@@ -187,7 +196,7 @@ def withdraw():
 
 
 # ─────────────────────────────────────────────
-# BUY CRYPTO
+# BUY CRYPTO (HTG → platfòm)
 # ─────────────────────────────────────────────
 @dashboard_bp.route('/buy-crypto', methods=['POST'])
 @login_required
@@ -226,7 +235,7 @@ def buy_crypto():
 
 
 # ─────────────────────────────────────────────
-# SELL CRYPTO
+# SELL CRYPTO (USDT → HTG)
 # ─────────────────────────────────────────────
 @dashboard_bp.route('/sell-crypto', methods=['POST'])
 @login_required
@@ -272,6 +281,7 @@ def sell_crypto():
 
 # ─────────────────────────────────────────────
 # CONVERT HTG → USDT
+# FIX: itilize 'balance' pa 'balance_usdt'
 # ─────────────────────────────────────────────
 @dashboard_bp.route('/convert-htg-to-usdt', methods=['POST'])
 @login_required
@@ -280,28 +290,29 @@ def convert_htg_to_usdt():
     uid = session['user_id']
 
     try:
-        amount_htg  = float(request.form.get('amount_htg', 0))
+        amount_htg = float(request.form.get('amount_htg', 0))
 
         if amount_htg <= 0:
             flash('Amount must be greater than zero.', 'error')
             return redirect(url_for('dashboard.index'))
 
-        profile_res = db.table('profiles').select('balance_htg, balance_usdt').eq('id', uid).execute()
-        profile     = profile_res.data[0] if profile_res.data else {}
-        bal_htg     = float(profile.get('balance_htg') or 0)
-        bal_usdt    = float(profile.get('balance_usdt') or 0)
+        # !! Toujou chache 'balance' (USDT) ak 'balance_htg' !!
+        profile = _get_profile(db, uid)
+        bal_htg  = float(profile.get('balance_htg') or 0)
+        bal_usdt = float(profile.get('balance') or 0)   # <-- FIX: 'balance' pa 'balance_usdt'
 
         if amount_htg > bal_htg:
-            flash('Insufficient HTG balance.', 'error')
+            flash(f'Not enough money. Balans HTG ou: {bal_htg:.2f} HTG.', 'error')
             return redirect(url_for('dashboard.index'))
 
         rate        = _get_rate(db)
         amount_usdt = round(amount_htg / rate, 6)
         now         = datetime.now(timezone.utc).isoformat()
 
+        # !! Update 'balance' pa 'balance_usdt' !!
         db.table('profiles').update({
-            'balance_htg':  round(bal_htg - amount_htg, 2),
-            'balance_usdt': round(bal_usdt + amount_usdt, 6),
+            'balance_htg': round(bal_htg - amount_htg, 2),
+            'balance':     round(bal_usdt + amount_usdt, 6),  # <-- FIX
         }).eq('id', uid).execute()
 
         db.table('htg_transactions').insert({
@@ -315,7 +326,16 @@ def convert_htg_to_usdt():
             'created_at':  now,
         }).execute()
 
-        flash(f'Converted {amount_htg} HTG → {amount_usdt:.6f} USDT!', 'success')
+        db.table('transactions').insert({
+            'user_id':     uid,
+            'type':        'htg_to_usdt',
+            'amount':      amount_usdt,
+            'description': f'HTG → USDT: {amount_htg} HTG @ {rate}',
+            'status':      'completed',
+            'created_at':  now,
+        }).execute()
+
+        flash(f'Konvèsyon reyisi! {amount_htg:.2f} HTG → {amount_usdt:.6f} USDT', 'success')
 
     except Exception as e:
         flash(f'Conversion error: {e}', 'error')
@@ -325,6 +345,7 @@ def convert_htg_to_usdt():
 
 # ─────────────────────────────────────────────
 # CONVERT USDT → HTG
+# FIX: itilize 'balance' pa 'balance_usdt'
 # ─────────────────────────────────────────────
 @dashboard_bp.route('/convert-usdt-to-htg', methods=['POST'])
 @login_required
@@ -339,22 +360,23 @@ def convert_usdt_to_htg():
             flash('Amount must be greater than zero.', 'error')
             return redirect(url_for('dashboard.index'))
 
-        profile_res = db.table('profiles').select('balance_htg, balance_usdt').eq('id', uid).execute()
-        profile     = profile_res.data[0] if profile_res.data else {}
-        bal_usdt    = float(profile.get('balance_usdt') or 0)
-        bal_htg     = float(profile.get('balance_htg') or 0)
+        # !! Toujou chache 'balance' (USDT) !!
+        profile  = _get_profile(db, uid)
+        bal_usdt = float(profile.get('balance') or 0)   # <-- FIX: 'balance' pa 'balance_usdt'
+        bal_htg  = float(profile.get('balance_htg') or 0)
 
         if amount_usdt > bal_usdt:
-            flash('Insufficient USDT balance.', 'error')
+            flash(f'Not enough money. Balans USDT ou: ${bal_usdt:.2f} USDT.', 'error')
             return redirect(url_for('dashboard.index'))
 
         rate       = _get_rate(db)
         amount_htg = round(amount_usdt * rate, 2)
         now        = datetime.now(timezone.utc).isoformat()
 
+        # !! Update 'balance' pa 'balance_usdt' !!
         db.table('profiles').update({
-            'balance_usdt': round(bal_usdt - amount_usdt, 6),
-            'balance_htg':  round(bal_htg + amount_htg, 2),
+            'balance':     round(bal_usdt - amount_usdt, 6),  # <-- FIX
+            'balance_htg': round(bal_htg + amount_htg, 2),
         }).eq('id', uid).execute()
 
         db.table('htg_transactions').insert({
@@ -368,7 +390,16 @@ def convert_usdt_to_htg():
             'created_at':  now,
         }).execute()
 
-        flash(f'Converted {amount_usdt} USDT → {amount_htg} HTG!', 'success')
+        db.table('transactions').insert({
+            'user_id':     uid,
+            'type':        'usdt_to_htg',
+            'amount':      -amount_usdt,
+            'description': f'USDT → HTG: {amount_usdt} USDT @ {rate}',
+            'status':      'completed',
+            'created_at':  now,
+        }).execute()
+
+        flash(f'Konvèsyon reyisi! {amount_usdt:.6f} USDT → {amount_htg:.2f} HTG', 'success')
 
     except Exception as e:
         flash(f'Conversion error: {e}', 'error')
@@ -397,12 +428,11 @@ def htg_withdraw():
             flash('NatCash number is required.', 'error')
             return redirect(url_for('dashboard.index'))
 
-        profile_res = db.table('profiles').select('balance_htg').eq('id', uid).execute()
-        profile     = profile_res.data[0] if profile_res.data else {}
-        bal_htg     = float(profile.get('balance_htg') or 0)
+        profile = _get_profile(db, uid)
+        bal_htg = float(profile.get('balance_htg') or 0)
 
         if amount_htg > bal_htg:
-            flash('Insufficient HTG balance.', 'error')
+            flash(f'Not enough money. Balans HTG ou: {bal_htg:.2f} HTG.', 'error')
             return redirect(url_for('dashboard.index'))
 
         now     = datetime.now(timezone.utc).isoformat()
@@ -427,7 +457,7 @@ def htg_withdraw():
             'created_at':  now,
         }).execute()
 
-        flash(f'HTG withdrawal of {amount_htg} HTG submitted!', 'success')
+        flash(f'HTG withdrawal of {amount_htg:.2f} HTG submitted!', 'success')
 
     except Exception as e:
         flash(f'Withdrawal error: {e}', 'error')
