@@ -11,11 +11,11 @@
       <span class="sidebar-brand">Football Hub</span>
     </div>
     <nav class="sidebar-nav">
-      <a href="{{ url_for('football.hub') }}" class="nav-item">📅 Matches</a>
-      <a href="{{ url_for('football.standings') }}" class="nav-item active">📊 Standings</a>
+      <a href="{{ url_for('football.hub') }}"        class="nav-item">📅 Matches</a>
+      <a href="{{ url_for('football.standings') }}"  class="nav-item active">📊 Standings</a>
       <a href="{{ url_for('football.leaderboard') }}" class="nav-item">🥇 Leaderboard</a>
-      <a href="{{ url_for('contests.index') }}" class="nav-item">🏆 Contests</a>
-      <a href="{{ url_for('dashboard.index') }}" class="nav-item">← Dashboard</a>
+      <a href="{{ url_for('contests.index') }}"      class="nav-item">🏆 Contests</a>
+      <a href="{{ url_for('dashboard.index') }}"     class="nav-item">← Dashboard</a>
     </nav>
     <div class="sidebar-footer">
       <a href="{{ url_for('auth.logout') }}" class="btn-logout">Logout</a>
@@ -24,72 +24,207 @@
 
   <main class="main-content">
     <header class="topbar">
-      <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
-      <h1 class="page-title">League Standings</h1>
+      <button class="menu-toggle"
+              onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <h1 class="page-title">📊 League Standings</h1>
     </header>
 
-    {% if leagues %}
-      {% for league_name, teams in leagues.items() %}
+    {# ── Si API key manke ── #}
+    {% if not api_ok %}
+    <div class="alert alert--warning" style="margin-bottom:1rem">
+      ⚠️ <strong>FOOTBALL_API_KEY</strong> manke nan .env — klasman chaje soti nan Supabase sèlman.
+    </div>
+    {% endif %}
+
+    {# ── Tab nav pou chak lig ── #}
+    {% if leagues_data %}
+
+    {# League selector tabs #}
+    <div class="league-tabs" id="leagueTabs"
+         style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.5rem">
+      {% for lg in leagues_data %}
+      <button
+        class="league-tab-btn {{ 'league-tab-btn--active' if loop.first else '' }}"
+        data-target="league-{{ loop.index }}"
+        onclick="switchLeague(this)"
+        style="
+          padding:0.45rem 1rem;border-radius:999px;border:1px solid var(--border);
+          background:{{ 'var(--accent)' if loop.first else 'var(--surface-2)' }};
+          color:{{ 'white' if loop.first else 'var(--text-1)' }};
+          font-size:0.82rem;font-weight:600;cursor:pointer;transition:all .2s
+        ">
+        {{ lg.flag }} {{ lg.name }}
+      </button>
+      {% endfor %}
+    </div>
+
+    {# League tables #}
+    {% for lg in leagues_data %}
+    <div id="league-{{ loop.index }}"
+         class="league-panel"
+         style="{{ '' if loop.first else 'display:none' }}">
+
       <div class="card" style="margin-bottom:2rem">
-        <div class="card-header">
-          <h3>📊 {{ league_name }}</h3>
-          {% if teams %}<span class="text-muted" style="font-size:0.8rem">{{ teams[0].get('season','') }}</span>{% endif %}
+        <div class="card-header" style="display:flex;align-items:center;gap:0.75rem">
+          <span style="font-size:1.5rem">{{ lg.flag }}</span>
+          <h3 style="margin:0">{{ lg.name }}</h3>
+          <span class="status-badge" style="background:rgba(74,222,128,0.15);color:#4ade80;margin-left:auto;font-size:0.72rem">
+            🔴 LIVE API
+          </span>
         </div>
+
         <div class="table-wrap">
           <table class="data-table">
             <thead>
               <tr>
-                <th>#</th>
-                <th>Team</th>
-                <th>P</th>
-                <th>W</th>
-                <th>D</th>
-                <th>L</th>
-                <th>GF</th>
-                <th>GA</th>
-                <th>GD</th>
-                <th>Pts</th>
+                <th style="width:36px">#</th>
+                <th>Ekip</th>
+                <th title="Jouk">P</th>
+                <th title="Genyen" class="text-green">W</th>
+                <th title="Egal" class="text-muted">D</th>
+                <th title="Pèdi" class="text-red">L</th>
+                <th title="Gol pou">GF</th>
+                <th title="Gol kont">GA</th>
+                <th title="Diferans gol">GD</th>
+                <th title="Pwen" style="color:var(--gold)">Pts</th>
+                <th title="5 dènye match">Fòm</th>
               </tr>
             </thead>
             <tbody>
-            {% for team in teams %}
-            <tr class="{{ 'standings-top' if loop.index <= 4 else '' }} {{ 'standings-danger' if loop.index > teams|length - 3 else '' }}">
-              <td><strong>{{ team.position }}</strong></td>
+            {% for team in lg.teams %}
+            {# Koulè pou Champions League (top 4/5) ak Relegation (dènye 3) #}
+            {% set total = lg.teams|length %}
+            {% set pos   = loop.index %}
+            <tr style="
+              {{ 'border-left:3px solid #4ade80;background:rgba(74,222,128,0.05)' if pos <= 4 else
+                 'border-left:3px solid #f59e0b;background:rgba(245,158,11,0.05)' if pos == 5 or pos == 6 else
+                 'border-left:3px solid #f87171;background:rgba(248,113,113,0.05)' if pos > total - 3 else
+                 'border-left:3px solid transparent' }}
+            ">
               <td>
-                {% if team.team_logo %}
-                  <img src="{{ team.team_logo }}" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;border-radius:50%">
+                {% if pos == 1 %}
+                  <span title="1st">🥇</span>
+                {% elif pos == 2 %}
+                  <span title="2nd">🥈</span>
+                {% elif pos == 3 %}
+                  <span title="3rd">🥉</span>
+                {% else %}
+                  <strong style="color:var(--text-2)">{{ pos }}</strong>
                 {% endif %}
-                <strong>{{ team.team_name }}</strong>
+              </td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  {% if team.team_logo %}
+                  <img src="{{ team.team_logo }}"
+                       style="width:22px;height:22px;object-fit:contain;flex-shrink:0"
+                       loading="lazy"
+                       onerror="this.style.display='none'">
+                  {% endif %}
+                  <strong>{{ team.team_name }}</strong>
+                </div>
               </td>
               <td>{{ team.played }}</td>
-              <td class="text-green">{{ team.won }}</td>
+              <td class="text-green"><strong>{{ team.won }}</strong></td>
               <td class="text-muted">{{ team.drawn }}</td>
               <td class="text-red">{{ team.lost }}</td>
               <td>{{ team.goals_for }}</td>
               <td>{{ team.goals_against }}</td>
-              <td class="{{ 'text-green' if team.goal_diff > 0 else 'text-red' if team.goal_diff < 0 else '' }}">
+              <td class="{{ 'text-green' if team.goal_diff > 0 else 'text-red' if team.goal_diff < 0 else 'text-muted' }}">
                 {{ "%+d"|format(team.goal_diff) }}
               </td>
-              <td><strong style="color:var(--gold)">{{ team.points }}</strong></td>
+              <td><strong style="color:var(--gold);font-size:1rem">{{ team.points }}</strong></td>
+              <td>
+                {# Fòm 5 dènye match yo #}
+                {% if team.form %}
+                <div style="display:flex;gap:2px">
+                  {% for ch in team.form.split(',') if ch %}
+                  <span style="
+                    display:inline-flex;align-items:center;justify-content:center;
+                    width:18px;height:18px;border-radius:50%;font-size:0.62rem;font-weight:700;
+                    {{ 'background:#4ade80;color:#000' if ch == 'W' else
+                       'background:#f87171;color:#fff' if ch == 'L' else
+                       'background:#6b7280;color:#fff' }}
+                  ">{{ ch }}</span>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+              </td>
             </tr>
             {% endfor %}
             </tbody>
           </table>
         </div>
-        <div style="padding:0.75rem 1.25rem;font-size:0.78rem;color:var(--text-2);border-top:1px solid var(--border)">
-          <span style="display:inline-block;width:12px;height:12px;background:rgba(100,220,100,0.2);border-left:3px solid #4ade80;margin-right:6px"></span>
-          Champions League &nbsp;|&nbsp;
-          <span style="display:inline-block;width:12px;height:12px;background:rgba(250,100,100,0.15);border-left:3px solid #f87171;margin-right:6px"></span>
-          Relegation Zone
+
+        {# Légende #}
+        <div style="padding:0.75rem 1.25rem;font-size:0.75rem;color:var(--text-2);
+                    border-top:1px solid var(--border);display:flex;gap:1.25rem;flex-wrap:wrap">
+          <span>
+            <span style="display:inline-block;width:10px;height:10px;background:rgba(74,222,128,0.2);
+                         border-left:3px solid #4ade80;margin-right:5px;vertical-align:middle"></span>
+            Champions League
+          </span>
+          <span>
+            <span style="display:inline-block;width:10px;height:10px;background:rgba(245,158,11,0.15);
+                         border-left:3px solid #f59e0b;margin-right:5px;vertical-align:middle"></span>
+            Europa League
+          </span>
+          <span>
+            <span style="display:inline-block;width:10px;height:10px;background:rgba(248,113,113,0.15);
+                         border-left:3px solid #f87171;margin-right:5px;vertical-align:middle"></span>
+            Relegation Zone
+          </span>
         </div>
       </div>
-      {% endfor %}
+    </div>
+    {% endfor %}
+
     {% else %}
-      <div class="empty-state">
-        <p>No standings data yet. Admin will update league tables.</p>
-      </div>
+    {# Afiche si API pa disponib epi Supabase vid #}
+    <div class="empty-state">
+      <div style="font-size:3rem;margin-bottom:1rem">📊</div>
+      <h3>Pa gen done klasman disponib</h3>
+      <p style="color:var(--text-2);max-width:420px;margin:0 auto">
+        {% if not api_ok %}
+          Ajoute <code>FOOTBALL_API_KEY</code> nan fichye <code>.env</code> ou —
+          klasman yo ap chaje otomatikman soti nan <strong>football-data.org</strong>.
+        {% else %}
+          API a ap eseye chaje done yo. Eseye ankò nan kèk segond.
+        {% endif %}
+      </p>
+      {% if api_ok %}
+      <a href="{{ url_for('football.standings') }}"
+         class="btn btn--outline" style="margin-top:1.25rem">
+        🔄 Refrèchi
+      </a>
+      {% endif %}
+    </div>
     {% endif %}
 
   </main>
 </div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function switchLeague(btn) {
+  // Kache tout panèl
+  document.querySelectorAll('.league-panel').forEach(p => p.style.display = 'none');
+  // Retire active sou tout bouton
+  document.querySelectorAll('.league-tab-btn').forEach(b => {
+    b.style.background = 'var(--surface-2)';
+    b.style.color      = 'var(--text-1)';
+    b.classList.remove('league-tab-btn--active');
+  });
+  // Montre panèl seleksyone a
+  const target = btn.getAttribute('data-target');
+  const panel  = document.getElementById(target);
+  if (panel) panel.style.display = '';
+  // Style bouton aktif la
+  btn.style.background = 'var(--accent)';
+  btn.style.color      = 'white';
+  btn.classList.add('league-tab-btn--active');
+}
+</script>
 {% endblock %}
