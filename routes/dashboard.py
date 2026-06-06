@@ -326,15 +326,6 @@ def convert_htg_to_usdt():
             'created_at':  now,
         }).execute()
 
-        db.table('transactions').insert({
-            'user_id':     uid,
-            'type':        'htg_to_usdt',
-            'amount':      amount_usdt,
-            'description': f'HTG → USDT: {amount_htg} HTG @ {rate}',
-            'status':      'completed',
-            'created_at':  now,
-        }).execute()
-
         flash(f'Konvèsyon reyisi! {amount_htg:.2f} HTG → {amount_usdt:.6f} USDT', 'success')
 
     except Exception as e:
@@ -386,15 +377,6 @@ def convert_usdt_to_htg():
             'amount_usdt': -amount_usdt,
             'rate':        rate,
             'description': f'Converted {amount_usdt} USDT to {amount_htg} HTG @ {rate}',
-            'status':      'completed',
-            'created_at':  now,
-        }).execute()
-
-        db.table('transactions').insert({
-            'user_id':     uid,
-            'type':        'usdt_to_htg',
-            'amount':      -amount_usdt,
-            'description': f'USDT → HTG: {amount_usdt} USDT @ {rate}',
             'status':      'completed',
             'created_at':  now,
         }).execute()
