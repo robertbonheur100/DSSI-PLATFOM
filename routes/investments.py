@@ -78,7 +78,6 @@ def activate():
         return redirect(url_for('dashboard.index'))
 
     try:
-        # Use .execute() without .single() to avoid crash
         profile_res = db.table('profiles').select('balance').eq('id', uid).execute()
 
         if not profile_res.data:
@@ -122,11 +121,8 @@ def activate():
             'created_at':  now.isoformat(),
         }).execute()
 
-        # Pay referral commissions
-        try:
-            pay_referral_commissions(db, uid, plan['amount'], tx_type='investment')
-        except Exception:
-            pass
+        # NOTE: Referral commission intentionally removed here.
+        # Commission is paid ONLY on deposit/recharge — see deposit route.
 
         flash(f"{plan['name']} Plan activated! You will earn 2% daily.", 'success')
 
