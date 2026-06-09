@@ -403,6 +403,101 @@ def adjust_htg():
     return redirect(url_for('admin.dashboard'))
 
 
+# ─────────────────────────────────────────────
+# SUSPEND / REACTIVATE INVESTMENT PLAN
+# ─────────────────────────────────────────────
+@admin_bp.route('/investment/<inv_id>/suspend', methods=['POST'])
+@admin_required
+def suspend_investment(inv_id):
+    """
+    Kanpe plan yon itilizate — chanje status → 'suspended'.
+    Itilizate pap resevwa profi jou a pandan plan li suspended.
+    Pou re-aktive li, itilizate a dwe peye frè re-aktivasyon an
+    (oswa admin ka re-aktive l manyèlman via /investment/<id>/reactivate).
+    """
+    db  = get_admin_supabase()
+    now = _now()
+
+    invs = _q(lambda: db.table('investments').select('*').eq('id', inv_id).execute())
+    if not invs:
+        flash('Investment plan not found.', 'error')
+        return redirect(url_for('admin.dashboard') + '#tab-investments')
+
+    inv    = invs[0]
+    uid    = inv.get('user_id')
+    reason = request.form.get('reason', 'Suspended by admin')
+
+    if inv.get('status') == 'suspended':
+        flash('Plan deja suspended.', 'info')
+        return redirect(url_for('admin.dashboard') + '#tab-investments')
+
+    db.table('investments').update({
+        'status':           'suspended',
+        'suspended_at':     now,
+        'suspend_reason':   reason,
+    }).eq('id', inv_id).execute()
+
+    db.table('transactions').insert({
+        'user_id':     uid,
+        'type':        'plan_suspended',
+        'amount':      0,
+        'description': f'Plan "{inv.get("plan_name","—")}" suspended — {reason}',
+        'status':      'completed',
+        'created_at':  now,
+    }).execute()
+
+    _log(db, 'suspend_investment', inv_id,
+         f'Suspended plan "{inv.get("plan_name","—")}" for user {uid[:8]} — {reason}', now)
+
+    flash(f'Plan "{inv.get("plan_name","—")}" suspended. Itilizate a pap resevwa profi anko jiskaske li re-aktive.', 'warning')
+    return redirect(url_for('admin.dashboard') + '#tab-investments')
+
+
+@admin_bp.route('/investment/<inv_id>/reactivate', methods=['POST'])
+@admin_required
+def reactivate_investment(inv_id):
+    """
+    Admin re-aktive plan manyèlman (si itilizate a te peye frè a
+    oswa admin deside re-aktive l san peman).
+    """
+    db  = get_admin_supabase()
+    now = _now()
+
+    invs = _q(lambda: db.table('investments').select('*').eq('id', inv_id).execute())
+    if not invs:
+        flash('Investment plan not found.', 'error')
+        return redirect(url_for('admin.dashboard') + '#tab-investments')
+
+    inv = invs[0]
+    uid = inv.get('user_id')
+
+    if inv.get('status') == 'active':
+        flash('Plan deja aktif.', 'info')
+        return redirect(url_for('admin.dashboard') + '#tab-investments')
+
+    db.table('investments').update({
+        'status':         'active',
+        'suspended_at':   None,
+        'suspend_reason': None,
+        'reactivated_at': now,
+    }).eq('id', inv_id).execute()
+
+    db.table('transactions').insert({
+        'user_id':     uid,
+        'type':        'plan_reactivated',
+        'amount':      0,
+        'description': f'Plan "{inv.get("plan_name","—")}" reactivated by admin',
+        'status':      'completed',
+        'created_at':  now,
+    }).execute()
+
+    _log(db, 'reactivate_investment', inv_id,
+         f'Reactivated plan "{inv.get("plan_name","—")}" for user {uid[:8]}', now)
+
+    flash(f'Plan "{inv.get("plan_name","—")}" reactivated. Itilizate a ap resevwa profi anko.', 'success')
+    return redirect(url_for('admin.dashboard') + '#tab-investments')
+
+
 def _log(db, action, target_id, details, now):
     try:
         db.table('admin_actions').insert({
