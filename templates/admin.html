@@ -37,6 +37,7 @@
       </a>
       <a class="nav-item" data-tab="exchange-rate">📊 Exchange Rate</a>
       <a class="nav-item" data-tab="investments">📈 Investments</a>
+      <a class="nav-item" data-tab="suspend-plan">🚫 Suspend Plan</a>
       <a class="nav-item" data-tab="transactions">📋 Transactions</a>
       <a class="nav-item" data-tab="actions">🔒 Audit Log</a>
     </nav>
@@ -95,6 +96,12 @@
           <div class="stat-icon">💸</div>
           <div class="stat-body"><p class="stat-label">Invested Volume</p><p class="stat-value">${{ "%.2f"|format(invested_vol) }}</p></div>
         </div>
+        {# Suspended plans counter #}
+        {% set suspended_count = investments | selectattr('status','equalto','suspended') | list | length %}
+        <div class="stat-card stat-card--danger">
+          <div class="stat-icon">🚫</div>
+          <div class="stat-body"><p class="stat-label">Plans Suspended</p><p class="stat-value">{{ suspended_count }}</p></div>
+        </div>
       </div>
 
       <div class="card">
@@ -108,7 +115,9 @@
               <td>{{ user_map.get(inv.get('user_id'), '—') }}</td>
               <td>{{ inv.get('plan_name','—') }}</td>
               <td>${{ "%.2f"|format(inv.get('amount',0)) }}</td>
-              <td class="text-green">+${{ "%.2f"|format(inv.get('amount',0) * 0.02) }}</td>
+              <td class="{{ 'text-green' if inv.get('status') == 'active' else 'text-red' }}">
+                {% if inv.get('status') == 'active' %}+${{ "%.2f"|format(inv.get('amount',0) * 0.02) }}{% else %}—{% endif %}
+              </td>
               <td>${{ "%.2f"|format(inv.get('total_earned') or 0) }}</td>
               <td class="text-muted">{{ (inv.get('last_profit_date') or 'Never')[:10] }}</td>
               <td><span class="status-badge status--{{ inv.get('status','') }}">{{ inv.get('status','').upper() }}</span></td>
@@ -452,20 +461,152 @@
         <div class="card-header"><h3>All Investment Plans</h3></div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>User</th><th>Plan</th><th>Amount</th><th>Daily</th><th>Earned</th><th>Start</th><th>Status</th></tr></thead>
+            <thead><tr><th>User</th><th>Plan</th><th>Amount</th><th>Daily</th><th>Earned</th><th>Start</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
             {% for inv in investments %}
-            <tr>
+            <tr class="{{ 'row-suspended' if inv.get('status') == 'suspended' else '' }}">
               <td>{{ user_map.get(inv.get('user_id'), '—') }}</td>
               <td>{{ inv.get('plan_name','—') }}</td>
               <td>${{ "%.2f"|format(inv.get('amount',0)) }}</td>
-              <td class="text-green">+${{ "%.2f"|format(inv.get('amount',0) * 0.02) }}/day</td>
+              <td class="{{ 'text-green' if inv.get('status') == 'active' else 'text-red' }}">
+                {% if inv.get('status') == 'active' %}+${{ "%.2f"|format(inv.get('amount',0) * 0.02) }}/day{% else %}—{% endif %}
+              </td>
               <td>${{ "%.2f"|format(inv.get('total_earned') or 0) }}</td>
               <td class="text-muted">{{ (inv.get('start_date') or '')[:10] }}</td>
               <td><span class="status-badge status--{{ inv.get('status','') }}">{{ inv.get('status','').upper() }}</span></td>
+              <td>
+                {% if inv.get('status') == 'active' %}
+                  <form method="POST" action="{{ url_for('admin.suspend_investment', inv_id=inv.id) }}"
+                        style="display:inline"
+                        onsubmit="return confirmSuspend(this, '{{ user_map.get(inv.get('user_id'),'?') }}', '{{ inv.get('plan_name','') }}')">
+                    <input type="hidden" name="reason" class="suspend-reason-input" value="Suspended by admin">
+                    <button type="submit" class="btn btn--xs btn--danger">🚫 Suspend</button>
+                  </form>
+                {% elif inv.get('status') == 'suspended' %}
+                  <form method="POST" action="{{ url_for('admin.reactivate_investment', inv_id=inv.id) }}"
+                        style="display:inline"
+                        onsubmit="return confirm('Re-aktive plan {{ inv.get(\'plan_name\',\'\') }} pou {{ user_map.get(inv.get(\'user_id\'),\'?\') }}?')">
+                    <button type="submit" class="btn btn--xs btn--success">✅ Reactivate</button>
+                  </form>
+                {% else %}—{% endif %}
+              </td>
             </tr>
             {% else %}
-            <tr><td colspan="7" class="text-center text-muted">No investments</td></tr>
+            <tr><td colspan="8" class="text-center text-muted">No investments</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── SUSPEND PLAN (panel dedye) ── #}
+    <section class="tab-section" id="tab-suspend-plan">
+
+      {# ---- Suspended plans ---- #}
+      {% set suspended_invs = investments | selectattr('status','equalto','suspended') | list %}
+      {% if suspended_invs %}
+      <div class="card" style="border-color:#f87171">
+        <div class="card-header" style="border-color:#f87171">
+          <h3 style="color:#f87171">🚫 Plans Suspended ({{ suspended_invs|length }})</h3>
+          <p style="color:var(--text-2);font-size:.85rem;margin-top:.3rem">
+            Plans sa yo pa ap touche profi jou a. Itilizate a dwe peye pou re-aktive, oswa admin ka re-aktive l dirèkteman.
+          </p>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Itilizate</th><th>Plan</th><th>Montant</th><th>Rezon Suspension</th>
+                <th>Dat Suspension</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for inv in suspended_invs %}
+            <tr class="row-suspended">
+              <td><strong>{{ user_map.get(inv.get('user_id'), '—') }}</strong></td>
+              <td>{{ inv.get('plan_name','—') }}</td>
+              <td>${{ "%.2f"|format(inv.get('amount',0)) }}</td>
+              <td class="text-muted">{{ inv.get('suspend_reason','—') }}</td>
+              <td class="text-muted">{{ (inv.get('suspended_at') or '—')[:16] }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.reactivate_investment', inv_id=inv.id) }}"
+                      style="display:inline"
+                      onsubmit="return confirm('Re-aktive plan {{ inv.get(\'plan_name\',\'\') }} pou {{ user_map.get(inv.get(\'user_id\'),\'?\') }}?')">
+                  <button type="submit" class="btn btn--xs btn--success">✅ Re-aktive</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ---- Form: Chwazi itilizate + plan pou kanpe ---- #}
+      <div class="card">
+        <div class="card-header">
+          <h3>🚫 Kanpe Plan yon Itilizate</h3>
+          <p style="color:var(--text-2);font-size:.85rem;margin-top:.3rem">
+            Chwazi itilizate a, answit chwazi ki plan ou vle suspend. Apre sa, itilizate a pap touche profi anko.
+          </p>
+        </div>
+
+        {# Step 1: filtè pa itilizate #}
+        <div class="form-body" style="padding-bottom:0">
+          <div class="form-row">
+            <div class="form-group" style="flex:1">
+              <label>1. Chwazi Itilizate</label>
+              <select id="suspend-user-select" onchange="filterInvsByUser(this.value)">
+                <option value="">— Tout itilizate —</option>
+                {% for u in users %}
+                <option value="{{ u.id }}">{{ u.get('username','?') }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {# Tabèl plan k ap montre apre filtre #}
+        <div class="table-wrap" style="margin-top:.5rem">
+          <table class="data-table" id="suspend-inv-table">
+            <thead>
+              <tr>
+                <th>Itilizate</th><th>Plan</th><th>Montant</th><th>Daily</th>
+                <th>Status</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for inv in investments %}
+            <tr class="suspend-inv-row {{ 'row-suspended' if inv.get('status') == 'suspended' else '' }}"
+                data-uid="{{ inv.get('user_id','') }}">
+              <td><strong>{{ user_map.get(inv.get('user_id'), '—') }}</strong></td>
+              <td>{{ inv.get('plan_name','—') }}</td>
+              <td>${{ "%.2f"|format(inv.get('amount',0)) }}</td>
+              <td class="{{ 'text-green' if inv.get('status') == 'active' else 'text-muted' }}">
+                {% if inv.get('status') == 'active' %}+${{ "%.2f"|format(inv.get('amount',0) * 0.02) }}/jr{% else %}—{% endif %}
+              </td>
+              <td><span class="status-badge status--{{ inv.get('status','') }}">{{ inv.get('status','').upper() }}</span></td>
+              <td>
+                {% if inv.get('status') == 'active' %}
+                  <form method="POST" action="{{ url_for('admin.suspend_investment', inv_id=inv.id) }}"
+                        style="display:inline"
+                        onsubmit="return confirmSuspend(this, '{{ user_map.get(inv.get('user_id'),'?') }}', '{{ inv.get('plan_name','') }}')">
+                    <input type="hidden" name="reason" class="suspend-reason-input" value="Suspended by admin">
+                    <button type="submit" class="btn btn--xs btn--danger">🚫 Suspend</button>
+                  </form>
+                {% elif inv.get('status') == 'suspended' %}
+                  <form method="POST" action="{{ url_for('admin.reactivate_investment', inv_id=inv.id) }}"
+                        style="display:inline"
+                        onsubmit="return confirm('Re-aktive plan sa pou itilizate a?')">
+                    <button type="submit" class="btn btn--xs btn--success">✅ Re-aktive</button>
+                  </form>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted">Pa gen plan</td></tr>
             {% endfor %}
             </tbody>
           </table>
@@ -526,9 +667,27 @@
   </main>
 </div>
 
+<style>
+/* ── Suspended row style ── */
+.row-suspended {
+  background: rgba(248, 113, 113, 0.06) !important;
+  border-left: 3px solid #f87171;
+}
+.status--suspended {
+  background: rgba(248,113,113,.15);
+  color: #f87171;
+  border: 1px solid rgba(248,113,113,.3);
+}
+.stat-card--danger {
+  border-color: rgba(248,113,113,.4);
+}
+.stat-card--danger .stat-value { color: #f87171; }
+</style>
+
 {% endblock %}
 {% block scripts %}
 <script>
+/* ── Tab navigation ── */
 document.querySelectorAll('[data-tab]').forEach(item => {
   item.addEventListener('click', function(e) {
     e.preventDefault();
@@ -540,8 +699,31 @@ document.querySelectorAll('[data-tab]').forEach(item => {
     document.getElementById('page-title').textContent = this.textContent.trim().replace(/\d+/g,'').trim();
   });
 });
+
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
+}
+
+/* ── Filtre plan pa itilizate nan "Suspend Plan" panel ── */
+function filterInvsByUser(uid) {
+  document.querySelectorAll('.suspend-inv-row').forEach(row => {
+    if (!uid || row.dataset.uid === uid) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
+/* ── Confirm suspend ak raison ── */
+function confirmSuspend(form, username, planName) {
+  const reason = prompt(
+    `Kanpe plan "${planName}" pou ${username}.\n\nEkri rezon suspension an (oswa kite l vid pou default):`,
+    'Peman an echwe — plan suspended'
+  );
+  if (reason === null) return false;          // cancel
+  form.querySelector('.suspend-reason-input').value = reason || 'Suspended by admin';
+  return true;
 }
 </script>
 {% endblock %}
