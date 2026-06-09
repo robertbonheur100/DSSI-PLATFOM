@@ -476,16 +476,20 @@
               <td><span class="status-badge status--{{ inv.get('status','') }}">{{ inv.get('status','').upper() }}</span></td>
               <td>
                 {% if inv.get('status') == 'active' %}
+                  {% set inv_user = user_map.get(inv.get('user_id'), '?') %}
+                  {% set inv_plan = inv.get('plan_name', '') %}
                   <form method="POST" action="{{ url_for('admin.suspend_investment', inv_id=inv.id) }}"
                         style="display:inline"
-                        onsubmit="return confirmSuspend(this, '{{ user_map.get(inv.get('user_id'),'?') }}', '{{ inv.get('plan_name','') }}')">
+                        onsubmit="return confirmSuspend(this, '{{ inv_user }}', '{{ inv_plan }}')">
                     <input type="hidden" name="reason" class="suspend-reason-input" value="Suspended by admin">
                     <button type="submit" class="btn btn--xs btn--danger">🚫 Suspend</button>
                   </form>
                 {% elif inv.get('status') == 'suspended' %}
+                  {% set inv_user = user_map.get(inv.get('user_id'), '?') %}
+                  {% set inv_plan = inv.get('plan_name', '') %}
                   <form method="POST" action="{{ url_for('admin.reactivate_investment', inv_id=inv.id) }}"
                         style="display:inline"
-                        onsubmit="return confirm('Re-aktive plan {{ inv.get(\'plan_name\',\'\') }} pou {{ user_map.get(inv.get(\'user_id\'),\'?\') }}?')">
+                        onsubmit="return confirm('Re-aktive plan {{ inv_plan }} pou {{ inv_user }}?')">
                     <button type="submit" class="btn btn--xs btn--success">✅ Reactivate</button>
                   </form>
                 {% else %}—{% endif %}
@@ -523,8 +527,10 @@
             </thead>
             <tbody>
             {% for inv in suspended_invs %}
+            {% set inv_user = user_map.get(inv.get('user_id'), '?') %}
+            {% set inv_plan = inv.get('plan_name', '') %}
             <tr class="row-suspended">
-              <td><strong>{{ user_map.get(inv.get('user_id'), '—') }}</strong></td>
+              <td><strong>{{ inv_user }}</strong></td>
               <td>{{ inv.get('plan_name','—') }}</td>
               <td>${{ "%.2f"|format(inv.get('amount',0)) }}</td>
               <td class="text-muted">{{ inv.get('suspend_reason','—') }}</td>
@@ -532,7 +538,7 @@
               <td>
                 <form method="POST" action="{{ url_for('admin.reactivate_investment', inv_id=inv.id) }}"
                       style="display:inline"
-                      onsubmit="return confirm('Re-aktive plan {{ inv.get(\'plan_name\',\'\') }} pou {{ user_map.get(inv.get(\'user_id\'),\'?\') }}?')">
+                      onsubmit="return confirm('Re-aktive plan {{ inv_plan }} pou {{ inv_user }}?')">
                   <button type="submit" class="btn btn--xs btn--success">✅ Re-aktive</button>
                 </form>
               </td>
@@ -579,9 +585,11 @@
             </thead>
             <tbody>
             {% for inv in investments %}
+            {% set inv_user = user_map.get(inv.get('user_id'), '?') %}
+            {% set inv_plan = inv.get('plan_name', '') %}
             <tr class="suspend-inv-row {{ 'row-suspended' if inv.get('status') == 'suspended' else '' }}"
                 data-uid="{{ inv.get('user_id','') }}">
-              <td><strong>{{ user_map.get(inv.get('user_id'), '—') }}</strong></td>
+              <td><strong>{{ inv_user }}</strong></td>
               <td>{{ inv.get('plan_name','—') }}</td>
               <td>${{ "%.2f"|format(inv.get('amount',0)) }}</td>
               <td class="{{ 'text-green' if inv.get('status') == 'active' else 'text-muted' }}">
@@ -592,7 +600,7 @@
                 {% if inv.get('status') == 'active' %}
                   <form method="POST" action="{{ url_for('admin.suspend_investment', inv_id=inv.id) }}"
                         style="display:inline"
-                        onsubmit="return confirmSuspend(this, '{{ user_map.get(inv.get('user_id'),'?') }}', '{{ inv.get('plan_name','') }}')">
+                        onsubmit="return confirmSuspend(this, '{{ inv_user }}', '{{ inv_plan }}')">
                     <input type="hidden" name="reason" class="suspend-reason-input" value="Suspended by admin">
                     <button type="submit" class="btn btn--xs btn--danger">🚫 Suspend</button>
                   </form>
