@@ -243,20 +243,24 @@ def adjust_balance():
 # ─────────────────────────────────────────────
 # SET EXCHANGE RATES  (3 tip separe)
 # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# RANPLASE sèlman fonction set_rate() nan admin.py ou a
+# ─────────────────────────────────────────────
+
 @admin_bp.route('/set-rate', methods=['POST'])
 @admin_required
 def set_rate():
     """
-    Resevwa yon sèl tip taux nan yon fwa (rate_type = buy | sell | convert).
-    Enstale yon nouvo ligne nan exchange_rates ak sèlman kolòn ki konsène a.
+    UPDATE yon sèl ligne fiks nan exchange_rates.
+    Konsa rate_buy, rate_sell, rate_convert toujou nan menm ligne —
+    pa gen pwoblèm NULL ankò.
     """
     try:
         db        = get_admin_supabase()
         rate_type = request.form.get('rate_type', '')   # 'buy' | 'sell' | 'convert'
         rate_val  = float(request.form.get('rate', 0))
 
-        allowed = ('buy', 'sell', 'convert')
-        if rate_type not in allowed:
+        if rate_type not in ('buy', 'sell', 'convert'):
             flash('Type taux la pa valid.', 'error')
             return redirect(url_for('admin.dashboard'))
 
@@ -264,11 +268,27 @@ def set_rate():
             flash('Taux la dwe plis ke zewo.', 'error')
             return redirect(url_for('admin.dashboard'))
 
-        col_name = f'rate_{rate_type}'   # rate_buy | rate_sell | rate_convert
+        col_name = f'rate_{rate_type}'
 
-        db.table('exchange_rates').insert({
-            col_name: rate_val,
-        }).execute()
+        # Verifye si ligne "current" deja egziste
+        existing = db.table('exchange_rates').select('id').limit(1).execute()
+
+        if existing.data:
+            # UPDATE ligne ki egziste a
+            row_id = existing.data[0]['id']
+            db.table('exchange_rates').update({
+                col_name:     rate_val,
+                'created_at': datetime.now(timezone.utc).isoformat(),
+            }).eq('id', row_id).execute()
+        else:
+            # Premye fwa — INSERT ak tout kolòn a 130 pa defò
+            db.table('exchange_rates').insert({
+                'rate':          130.0,
+                'rate_buy':      130.0,
+                'rate_sell':     130.0,
+                'rate_convert':  130.0,
+                col_name:        rate_val,
+            }).execute()
 
         labels = {'buy': 'Buy Crypto', 'sell': 'Sell Crypto', 'convert': 'Convert USDT↔HTG'}
         flash(f'Taux {labels[rate_type]} mizajou: {rate_val} HTG/USDT.', 'success')
@@ -277,7 +297,6 @@ def set_rate():
         flash(f'Erè taux: {e}', 'error')
 
     return redirect(url_for('admin.dashboard'))
-
 
 # ─────────────────────────────────────────────
 # BUY CRYPTO APPROVE / REJECT
