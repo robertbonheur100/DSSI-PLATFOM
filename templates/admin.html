@@ -89,8 +89,16 @@
           <div class="stat-body"><p class="stat-label">Active Investments</p><p class="stat-value">{{ active_investments|length }}</p></div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">📊</div>
-          <div class="stat-body"><p class="stat-label">HTG Rate</p><p class="stat-value" style="font-size:1rem">{{ "%.2f"|format(current_rate) }} <small style="font-size:0.4em;color:var(--text-2)">HTG/USDT</small></p></div>
+          <div class="stat-icon">📥</div>
+          <div class="stat-body"><p class="stat-label">Buy Rate</p><p class="stat-value" style="font-size:1rem">{{ "%.2f"|format(rate_buy) }} <small style="font-size:0.4em;color:var(--text-2)">HTG/USDT</small></p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📤</div>
+          <div class="stat-body"><p class="stat-label">Sell Rate</p><p class="stat-value" style="font-size:1rem">{{ "%.2f"|format(rate_sell) }} <small style="font-size:0.4em;color:var(--text-2)">HTG/USDT</small></p></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔄</div>
+          <div class="stat-body"><p class="stat-label">Convert Rate</p><p class="stat-value" style="font-size:1rem">{{ "%.2f"|format(rate_convert) }} <small style="font-size:0.4em;color:var(--text-2)">HTG/USDT</small></p></div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">💸</div>
@@ -306,7 +314,7 @@
             <tr class="{{ 'row-pending' if r.get('status') == 'pending' else '' }}">
               <td>{{ user_map.get(r.get('user_id'), '—') }}</td>
               <td><strong>{{ r_htg }} HTG</strong></td>
-              <td class="text-muted">≈ ${{ "%.4f"|format(r.get('amount_htg',0) / current_rate) }}</td>
+              <td class="text-muted">≈ ${{ "%.4f"|format(r.get('amount_htg',0) / rate_buy) }}</td>
               <td class="text-mono">{{ r.get('natcash_sender','—') }}</td>
               <td class="text-muted">{{ (r.get('proof_note') or '—')[:25] }}</td>
               <td><span class="status-badge status--{{ r.get('status','') }}">{{ r.get('status','').upper() }}</span></td>
@@ -343,7 +351,7 @@
             <tbody>
             {% for r in sell_requests %}
             {% set r_usdt = "%.4f"|format(r.get('amount_usdt',0)) %}
-            {% set r_htg  = "%.2f"|format(r.get('amount_usdt',0) * current_rate) %}
+            {% set r_htg  = "%.2f"|format(r.get('amount_usdt',0) * rate_sell) %}
             <tr class="{{ 'row-pending' if r.get('status') == 'pending' else '' }}">
               <td>{{ user_map.get(r.get('user_id'), '—') }}</td>
               <td><strong>${{ r_usdt }}</strong></td>
@@ -419,35 +427,147 @@
 
     {# ── EXCHANGE RATE ── #}
     <section class="tab-section" id="tab-exchange-rate">
-      <div class="card">
-        <div class="card-header"><h3>Set Exchange Rate (HTG per 1 USDT)</h3></div>
+
+      {# Rezime taux aktyèl yo #}
+      <div class="rates-summary-grid">
+        <div class="rate-summary-card rate-summary--buy">
+          <div class="rate-summary-icon">📥</div>
+          <div class="rate-summary-body">
+            <p class="rate-summary-label">Taux Buy Crypto</p>
+            <p class="rate-summary-value">{{ "%.2f"|format(rate_buy) }} <small>HTG/USDT</small></p>
+            <p class="rate-summary-hint">Itilizate peye HTG pou achte USDT</p>
+          </div>
+        </div>
+        <div class="rate-summary-card rate-summary--sell">
+          <div class="rate-summary-icon">📤</div>
+          <div class="rate-summary-body">
+            <p class="rate-summary-label">Taux Sell Crypto</p>
+            <p class="rate-summary-value">{{ "%.2f"|format(rate_sell) }} <small>HTG/USDT</small></p>
+            <p class="rate-summary-hint">Itilizate voye USDT, resevwa HTG</p>
+          </div>
+        </div>
+        <div class="rate-summary-card rate-summary--convert">
+          <div class="rate-summary-icon">🔄</div>
+          <div class="rate-summary-body">
+            <p class="rate-summary-label">Taux Convert</p>
+            <p class="rate-summary-value">{{ "%.2f"|format(rate_convert) }} <small>HTG/USDT</small></p>
+            <p class="rate-summary-hint">Konvèsyon USDT ↔ HTG nan platfòm</p>
+          </div>
+        </div>
+      </div>
+
+      {# Fòm 1: Buy Crypto Rate #}
+      <div class="card" style="border-color:rgba(52,211,153,.3)">
+        <div class="card-header" style="border-color:rgba(52,211,153,.3)">
+          <h3 style="color:#34d399">📥 Taux Buy Crypto (HTG pou achte USDT)</h3>
+          <p style="color:var(--text-2);font-size:.85rem;margin-top:.3rem">
+            Taux sa itilize lè yon itilizate voye HTG via NatCash pou achte USDT.
+            1 USDT = <strong>{{ "%.2f"|format(rate_buy) }} HTG</strong> kounye a.
+          </p>
+        </div>
         <form method="POST" action="{{ url_for('admin.set_rate') }}" class="form-body">
+          <input type="hidden" name="rate_type" value="buy">
           <div class="form-row">
             <div class="form-group">
-              <label>New Rate (HTG = 1 USDT)</label>
-              <input type="number" name="rate" step="0.01" min="1" value="{{ current_rate }}" required>
+              <label>Nouvo Taux Buy (HTG = 1 USDT)</label>
+              <input type="number" name="rate" step="0.01" min="1"
+                     value="{{ "%.2f"|format(rate_buy) }}" required>
             </div>
             <div class="form-group form-group--action">
               <label>&nbsp;</label>
-              <button type="submit" class="btn btn--primary">Update Rate</button>
+              <button type="submit" class="btn btn--success">Mete Taux Buy</button>
             </div>
           </div>
         </form>
       </div>
+
+      {# Fòm 2: Sell Crypto Rate #}
+      <div class="card" style="border-color:rgba(251,146,60,.3)">
+        <div class="card-header" style="border-color:rgba(251,146,60,.3)">
+          <h3 style="color:#fb923c">📤 Taux Sell Crypto (HTG itilizate resevwa)</h3>
+          <p style="color:var(--text-2);font-size:.85rem;margin-top:.3rem">
+            Taux sa itilize lè yon itilizate voye USDT epi li resevwa HTG.
+            1 USDT = <strong>{{ "%.2f"|format(rate_sell) }} HTG</strong> kounye a.
+          </p>
+        </div>
+        <form method="POST" action="{{ url_for('admin.set_rate') }}" class="form-body">
+          <input type="hidden" name="rate_type" value="sell">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nouvo Taux Sell (HTG = 1 USDT)</label>
+              <input type="number" name="rate" step="0.01" min="1"
+                     value="{{ "%.2f"|format(rate_sell) }}" required>
+            </div>
+            <div class="form-group form-group--action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn--warn">Mete Taux Sell</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {# Fòm 3: Convert Rate #}
+      <div class="card" style="border-color:rgba(139,92,246,.3)">
+        <div class="card-header" style="border-color:rgba(139,92,246,.3)">
+          <h3 style="color:#8b5cf6">🔄 Taux Konvèsyon USDT ↔ HTG</h3>
+          <p style="color:var(--text-2);font-size:.85rem;margin-top:.3rem">
+            Taux jeneral pou konvèsyon anndan platfòm nan (retrè HTG, kalkil, elatriye).
+            1 USDT = <strong>{{ "%.2f"|format(rate_convert) }} HTG</strong> kounye a.
+          </p>
+        </div>
+        <form method="POST" action="{{ url_for('admin.set_rate') }}" class="form-body">
+          <input type="hidden" name="rate_type" value="convert">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nouvo Taux Convert (HTG = 1 USDT)</label>
+              <input type="number" name="rate" step="0.01" min="1"
+                     value="{{ "%.2f"|format(rate_convert) }}" required>
+            </div>
+            <div class="form-group form-group--action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn--primary">Mete Taux Convert</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {# Istorik taux yo #}
       <div class="card">
-        <div class="card-header"><h3>Rate History</h3></div>
+        <div class="card-header"><h3>📋 Istorik Chanjman Taux</h3></div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Rate (HTG/USDT)</th><th>Set By</th><th>Date</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Tip</th>
+                <th>Taux (HTG/USDT)</th>
+                <th>Date</th>
+              </tr>
+            </thead>
             <tbody>
             {% for r in rates %}
-            <tr>
-              <td><strong>{{ "%.2f"|format(r.get('rate',0)) }} HTG</strong></td>
-              <td>{{ r.get('set_by','admin') }}</td>
-              <td class="text-muted">{{ (r.get('created_at') or '')[:16] }}</td>
-            </tr>
+              {% if r.get('rate_buy') is not none %}
+              <tr>
+                <td><span class="type-badge" style="color:#34d399;background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3)">📥 Buy</span></td>
+                <td><strong>{{ "%.2f"|format(r.get('rate_buy',0)) }} HTG</strong></td>
+                <td class="text-muted">{{ (r.get('created_at') or '')[:16] }}</td>
+              </tr>
+              {% endif %}
+              {% if r.get('rate_sell') is not none %}
+              <tr>
+                <td><span class="type-badge" style="color:#fb923c;background:rgba(251,146,60,.1);border-color:rgba(251,146,60,.3)">📤 Sell</span></td>
+                <td><strong>{{ "%.2f"|format(r.get('rate_sell',0)) }} HTG</strong></td>
+                <td class="text-muted">{{ (r.get('created_at') or '')[:16] }}</td>
+              </tr>
+              {% endif %}
+              {% if r.get('rate_convert') is not none %}
+              <tr>
+                <td><span class="type-badge" style="color:#8b5cf6;background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.3)">🔄 Convert</span></td>
+                <td><strong>{{ "%.2f"|format(r.get('rate_convert',0)) }} HTG</strong></td>
+                <td class="text-muted">{{ (r.get('created_at') or '')[:16] }}</td>
+              </tr>
+              {% endif %}
             {% else %}
-            <tr><td colspan="3" class="text-center text-muted">No rate history</td></tr>
+            <tr><td colspan="3" class="text-center text-muted">Pa gen istorik taux</td></tr>
             {% endfor %}
             </tbody>
           </table>
@@ -690,6 +810,57 @@
   border-color: rgba(248,113,113,.4);
 }
 .stat-card--danger .stat-value { color: #f87171; }
+
+/* ── Rate summary cards ── */
+.rates-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.rate-summary-card {
+  background: var(--surface-2, #14171f);
+  border: 1px solid var(--border, #222633);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.rate-summary--buy  { border-color: rgba(52,211,153,.35); }
+.rate-summary--sell { border-color: rgba(251,146,60,.35); }
+.rate-summary--convert { border-color: rgba(139,92,246,.35); }
+.rate-summary-icon { font-size: 1.8rem; line-height:1; }
+.rate-summary-label {
+  font-size: .78rem;
+  color: var(--text-2, #9aa3b8);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin: 0 0 .25rem;
+}
+.rate-summary-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-1, #e8eaf0);
+  margin: 0 0 .2rem;
+}
+.rate-summary-value small { font-size: .55em; color: var(--text-2, #9aa3b8); }
+.rate-summary-hint {
+  font-size: .75rem;
+  color: var(--text-2, #9aa3b8);
+  margin: 0;
+}
+.rate-summary--buy  .rate-summary-value { color: #34d399; }
+.rate-summary--sell .rate-summary-value { color: #fb923c; }
+.rate-summary--convert .rate-summary-value { color: #8b5cf6; }
+
+/* btn--warn si li pa egziste nan base.css */
+.btn--warn {
+  background: rgba(251,146,60,.15);
+  color: #fb923c;
+  border: 1px solid rgba(251,146,60,.4);
+}
+.btn--warn:hover { background: rgba(251,146,60,.25); }
 </style>
 
 {% endblock %}
@@ -729,7 +900,7 @@ function confirmSuspend(form, username, planName) {
     `Kanpe plan "${planName}" pou ${username}.\n\nEkri rezon suspension an (oswa kite l vid pou default):`,
     'Peman an echwe — plan suspended'
   );
-  if (reason === null) return false;          // cancel
+  if (reason === null) return false;
   form.querySelector('.suspend-reason-input').value = reason || 'Suspended by admin';
   return true;
 }
