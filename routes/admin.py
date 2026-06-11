@@ -21,37 +21,39 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
+# ─────────────────────────────────────────────
+# Ranplase fonction _get_rates() nan TOUDE fichye:
+#   routes/admin.py   (remplace _get_rates ak _get_rate tou)
+#   routes/dashboard.py  (remplace _get_rates tou)
+# ─────────────────────────────────────────────
+
 def _get_rates(db):
     """
-    Retounen yon dict { rate_buy, rate_sell, rate_convert }
-    pou dènye valè chak tip nan tablo exchange_rates.
-    Si yon kolòn manke, li tonbe sou 130.0 pa defò.
+    Li yon sèl ligne exchange_rates epi retounen 3 taux dirèkteman.
+    Pa chèche kolòn pa kolòn — pran tout kolòn ansanm nan premye ligne.
     """
     defaults = {'rate_buy': 130.0, 'rate_sell': 130.0, 'rate_convert': 130.0}
     try:
-        res = db.table('exchange_rates').select('*').order('created_at', desc=True).limit(20).execute()
-        rows = res.data or []
-        result = {}
-        for key in ('rate_buy', 'rate_sell', 'rate_convert'):
-            # pran dènye ligne ki gen kolòn sa a ki non-null
-            for row in rows:
-                val = row.get(key)
-                if val is not None:
-                    result[key] = float(val)
-                    break
-            if key not in result:
-                result[key] = defaults[key]
-        return result
+        res = db.table('exchange_rates') \
+                .select('rate_buy, rate_sell, rate_convert') \
+                .order('created_at', desc=True) \
+                .limit(1) \
+                .execute()
+        if res.data:
+            row = res.data[0]
+            return {
+                'rate_buy':     float(row['rate_buy'])     if row.get('rate_buy')     is not None else defaults['rate_buy'],
+                'rate_sell':    float(row['rate_sell'])    if row.get('rate_sell')    is not None else defaults['rate_sell'],
+                'rate_convert': float(row['rate_convert']) if row.get('rate_convert') is not None else defaults['rate_convert'],
+            }
     except Exception as e:
-        logger.error(f'[_get_rates] {e}')
-        return defaults
+        import logging
+        logging.getLogger(__name__).error(f'[_get_rates] {e}')
+    return defaults
 
 
 def _get_rate(db):
-    """
-    Backward-compat: retounen rate_convert pou tout kote ki te itilize
-    yon sèl taux anvan (sell, htg_wd, etc.).
-    """
+    """Backward-compat — retounen rate_convert sèlman."""
     return _get_rates(db)['rate_convert']
 
 
