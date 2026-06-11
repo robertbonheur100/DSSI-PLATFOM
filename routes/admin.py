@@ -21,14 +21,38 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-def _get_rate(db):
+def _get_rates(db):
+    """
+    Retounen yon dict { rate_buy, rate_sell, rate_convert }
+    pou dènye valè chak tip nan tablo exchange_rates.
+    Si yon kolòn manke, li tonbe sou 130.0 pa defò.
+    """
+    defaults = {'rate_buy': 130.0, 'rate_sell': 130.0, 'rate_convert': 130.0}
     try:
-        res = db.table('exchange_rates').select('rate').order('created_at', desc=True).limit(1).execute()
-        if res.data:
-            return float(res.data[0]['rate'])
-    except Exception:
-        pass
-    return 130.0
+        res = db.table('exchange_rates').select('*').order('created_at', desc=True).limit(20).execute()
+        rows = res.data or []
+        result = {}
+        for key in ('rate_buy', 'rate_sell', 'rate_convert'):
+            # pran dènye ligne ki gen kolòn sa a ki non-null
+            for row in rows:
+                val = row.get(key)
+                if val is not None:
+                    result[key] = float(val)
+                    break
+            if key not in result:
+                result[key] = defaults[key]
+        return result
+    except Exception as e:
+        logger.error(f'[_get_rates] {e}')
+        return defaults
+
+
+def _get_rate(db):
+    """
+    Backward-compat: retounen rate_convert pou tout kote ki te itilize
+    yon sèl taux anvan (sell, htg_wd, etc.).
+    """
+    return _get_rates(db)['rate_convert']
 
 
 @admin_bp.route('/')
@@ -47,8 +71,10 @@ def dashboard():
         buy_requests  = _q(lambda: db.table('buy_crypto_requests').select('*').order('created_at', desc=True).execute())
         sell_requests = _q(lambda: db.table('sell_crypto_requests').select('*').order('created_at', desc=True).execute())
         htg_wds       = _q(lambda: db.table('htg_withdrawals').select('*').order('created_at', desc=True).execute())
-        rates         = _q(lambda: db.table('exchange_rates').select('*').order('created_at', desc=True).limit(10).execute())
-        current_rate  = _get_rate(db)
+        rates         = _q(lambda: db.table('exchange_rates').select('*').order('created_at', desc=True).limit(20).execute())
+
+        all_rates    = _get_rates(db)
+        current_rate = all_rates['rate_convert']   # backward-compat pou template vye kote
 
         user_map = {u['id']: u.get('username', '—') for u in users}
 
@@ -80,6 +106,9 @@ def dashboard():
             htg_wds=htg_wds,
             rates=rates,
             current_rate=current_rate,
+            rate_buy=all_rates['rate_buy'],
+            rate_sell=all_rates['rate_sell'],
+            rate_convert=all_rates['rate_convert'],
             pending_buys=pending_buys,
             pending_sells=pending_sells,
             pending_htg_wds=pending_htg_wds,
@@ -212,27 +241,40 @@ def adjust_balance():
 
 
 # ─────────────────────────────────────────────
-# SET EXCHANGE RATE
+# SET EXCHANGE RATES  (3 tip separe)
 # ─────────────────────────────────────────────
 @admin_bp.route('/set-rate', methods=['POST'])
 @admin_required
 def set_rate():
+    """
+    Resevwa yon sèl tip taux nan yon fwa (rate_type = buy | sell | convert).
+    Enstale yon nouvo ligne nan exchange_rates ak sèlman kolòn ki konsène a.
+    """
     try:
-        db   = get_admin_supabase()
-        rate = float(request.form.get('rate', 0))
+        db        = get_admin_supabase()
+        rate_type = request.form.get('rate_type', '')   # 'buy' | 'sell' | 'convert'
+        rate_val  = float(request.form.get('rate', 0))
 
-        if rate <= 0:
-            flash('Rate must be greater than zero.', 'error')
+        allowed = ('buy', 'sell', 'convert')
+        if rate_type not in allowed:
+            flash('Type taux la pa valid.', 'error')
             return redirect(url_for('admin.dashboard'))
 
+        if rate_val <= 0:
+            flash('Taux la dwe plis ke zewo.', 'error')
+            return redirect(url_for('admin.dashboard'))
+
+        col_name = f'rate_{rate_type}'   # rate_buy | rate_sell | rate_convert
+
         db.table('exchange_rates').insert({
-            'rate': rate,
+            col_name: rate_val,
         }).execute()
 
-        flash(f'Exchange rate updated to {rate} HTG per USDT.', 'success')
+        labels = {'buy': 'Buy Crypto', 'sell': 'Sell Crypto', 'convert': 'Convert USDT↔HTG'}
+        flash(f'Taux {labels[rate_type]} mizajou: {rate_val} HTG/USDT.', 'success')
 
     except Exception as e:
-        flash(f'Rate error: {e}', 'error')
+        flash(f'Erè taux: {e}', 'error')
 
     return redirect(url_for('admin.dashboard'))
 
@@ -296,7 +338,7 @@ def handle_sell(req_id, action):
     req         = reqs[0]
     uid         = req.get('user_id')
     amount_usdt = float(req.get('amount_usdt') or 0)
-    rate        = _get_rate(db)
+    rate        = _get_rates(db)['rate_sell']   # itilize taux sell espesifik
     amount_htg  = round(amount_usdt * rate, 2)
 
     if action == 'approve':
@@ -409,12 +451,6 @@ def adjust_htg():
 @admin_bp.route('/investment/<inv_id>/suspend', methods=['POST'])
 @admin_required
 def suspend_investment(inv_id):
-    """
-    Kanpe plan yon itilizate — chanje status → 'suspended'.
-    Itilizate pap resevwa profi jou a pandan plan li suspended.
-    Pou re-aktive li, itilizate a dwe peye frè re-aktivasyon an
-    (oswa admin ka re-aktive l manyèlman via /investment/<id>/reactivate).
-    """
     db  = get_admin_supabase()
     now = _now()
 
@@ -432,9 +468,9 @@ def suspend_investment(inv_id):
         return redirect(url_for('admin.dashboard') + '#tab-investments')
 
     db.table('investments').update({
-        'status':           'suspended',
-        'suspended_at':     now,
-        'suspend_reason':   reason,
+        'status':         'suspended',
+        'suspended_at':   now,
+        'suspend_reason': reason,
     }).eq('id', inv_id).execute()
 
     db.table('transactions').insert({
@@ -449,17 +485,13 @@ def suspend_investment(inv_id):
     _log(db, 'suspend_investment', inv_id,
          f'Suspended plan "{inv.get("plan_name","—")}" for user {uid[:8]} — {reason}', now)
 
-    flash(f'Plan "{inv.get("plan_name","—")}" suspended. Itilizate a pap resevwa profi anko jiskaske li re-aktive.', 'warning')
+    flash(f'Plan "{inv.get("plan_name","—")}" suspended.', 'warning')
     return redirect(url_for('admin.dashboard') + '#tab-investments')
 
 
 @admin_bp.route('/investment/<inv_id>/reactivate', methods=['POST'])
 @admin_required
 def reactivate_investment(inv_id):
-    """
-    Admin re-aktive plan manyèlman (si itilizate a te peye frè a
-    oswa admin deside re-aktive l san peman).
-    """
     db  = get_admin_supabase()
     now = _now()
 
@@ -494,7 +526,7 @@ def reactivate_investment(inv_id):
     _log(db, 'reactivate_investment', inv_id,
          f'Reactivated plan "{inv.get("plan_name","—")}" for user {uid[:8]}', now)
 
-    flash(f'Plan "{inv.get("plan_name","—")}" reactivated. Itilizate a ap resevwa profi anko.', 'success')
+    flash(f'Plan "{inv.get("plan_name","—")}" reactivated.', 'success')
     return redirect(url_for('admin.dashboard') + '#tab-investments')
 
 
