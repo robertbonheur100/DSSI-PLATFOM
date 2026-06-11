@@ -9,22 +9,31 @@ dashboard_bp = Blueprint('dashboard', __name__)
 NATCASH_ADMIN = '41727986'
 
 
-def _get_rate(db):
+def _get_rates(db):
+    """
+    Retounen dict { rate_buy, rate_sell, rate_convert }
+    Chache dènye valè chak tip nan exchange_rates.
+    Si kolòn manke oswa vid → 130.0 pa defò.
+    """
+    defaults = {'rate_buy': 130.0, 'rate_sell': 130.0, 'rate_convert': 130.0}
     try:
-        res = db.table('exchange_rates').select('rate').order('created_at', desc=True).limit(1).execute()
-        if res.data:
-            return float(res.data[0]['rate'])
+        res  = db.table('exchange_rates').select('*').order('created_at', desc=True).limit(20).execute()
+        rows = res.data or []
+        result = {}
+        for key in ('rate_buy', 'rate_sell', 'rate_convert'):
+            for row in rows:
+                val = row.get(key)
+                if val is not None:
+                    result[key] = float(val)
+                    break
+            if key not in result:
+                result[key] = defaults[key]
+        return result
     except Exception:
-        pass
-    return 130.0
+        return defaults
 
 
 def _get_profile(db, uid):
-    """
-    Retounen profil user a.
-    !! Kolòn USDT OFISYEL se 'balance' !!
-    'balance_usdt' pa itilize ankò — tout kote itilize 'balance'.
-    """
     res = db.table('profiles').select('*').eq('id', uid).execute()
     return res.data[0] if res.data else {
         'username': 'User', 'balance': 0, 'balance_htg': 0
@@ -59,7 +68,8 @@ def index():
             .select('*').eq('user_id', uid)\
             .order('created_at', desc=True).limit(30).execute().data or []
 
-        rate = _get_rate(db)
+        rates = _get_rates(db)
+        rate  = rates['rate_convert']   # backward-compat pou template
 
         buy_requests = db.table('buy_crypto_requests')\
             .select('*').eq('user_id', uid)\
@@ -102,6 +112,9 @@ def index():
             usdt_bep20=Config.USDT_BEP20_ADDRESS,
             whatsapp=Config.WHATSAPP_NUMBER,
             rate=rate,
+            rate_buy=rates['rate_buy'],
+            rate_sell=rates['rate_sell'],
+            rate_convert=rates['rate_convert'],
             natcash_admin=NATCASH_ADMIN,
             buy_requests=buy_requests,
             sell_requests=sell_requests,
@@ -162,7 +175,6 @@ def withdraw():
         wallet  = request.form.get('wallet_address', '').strip()
         network = request.form.get('network', '')
 
-        # !! Kolòn USDT ofisyel = 'balance' !!
         profile = _get_profile(db, uid)
         balance = float(profile.get('balance') or 0)
 
@@ -197,6 +209,7 @@ def withdraw():
 
 # ─────────────────────────────────────────────
 # BUY CRYPTO (HTG → platfòm)
+# Itilize rate_buy
 # ─────────────────────────────────────────────
 @dashboard_bp.route('/buy-crypto', methods=['POST'])
 @login_required
@@ -217,16 +230,22 @@ def buy_crypto():
             flash('Please provide your NatCash sender number.', 'error')
             return redirect(url_for('dashboard.index'))
 
+        # Kalkile USDT ekvalan pou montre nan rekò (rate_buy)
+        rate_buy    = _get_rates(db)['rate_buy']
+        amount_usdt = round(amount_htg / rate_buy, 6)
+
         db.table('buy_crypto_requests').insert({
             'user_id':        uid,
             'amount_htg':     amount_htg,
+            'amount_usdt':    amount_usdt,
+            'rate':           rate_buy,
             'natcash_sender': natcash_sender,
             'proof_note':     proof_note,
             'status':         'pending',
             'created_at':     datetime.now(timezone.utc).isoformat(),
         }).execute()
 
-        flash('Buy request submitted! Admin will approve after confirming your NatCash payment.', 'success')
+        flash(f'Buy request submitted! ≈ {amount_usdt:.4f} USDT pou {amount_htg:.2f} HTG @ {rate_buy} HTG/USDT.', 'success')
 
     except Exception as e:
         flash(f'Buy crypto error: {e}', 'error')
@@ -236,6 +255,7 @@ def buy_crypto():
 
 # ─────────────────────────────────────────────
 # SELL CRYPTO (USDT → HTG)
+# Itilize rate_sell
 # ─────────────────────────────────────────────
 @dashboard_bp.route('/sell-crypto', methods=['POST'])
 @login_required
@@ -261,9 +281,15 @@ def sell_crypto():
             flash('Please provide the transaction hash.', 'error')
             return redirect(url_for('dashboard.index'))
 
+        # Kalkile HTG ekvalan pou montre nan rekò (rate_sell)
+        rate_sell  = _get_rates(db)['rate_sell']
+        amount_htg = round(amount_usdt * rate_sell, 2)
+
         db.table('sell_crypto_requests').insert({
             'user_id':          uid,
             'amount_usdt':      amount_usdt,
+            'amount_htg':       amount_htg,
+            'rate':             rate_sell,
             'tx_hash':          tx_hash,
             'network':          network,
             'natcash_receiver': natcash_receiver,
@@ -271,7 +297,7 @@ def sell_crypto():
             'created_at':       datetime.now(timezone.utc).isoformat(),
         }).execute()
 
-        flash('Sell request submitted! Admin will send HTG to your NatCash after verifying.', 'success')
+        flash(f'Sell request submitted! {amount_usdt:.4f} USDT → ≈ {amount_htg:.2f} HTG @ {rate_sell} HTG/USDT.', 'success')
 
     except Exception as e:
         flash(f'Sell crypto error: {e}', 'error')
@@ -281,7 +307,7 @@ def sell_crypto():
 
 # ─────────────────────────────────────────────
 # CONVERT HTG → USDT
-# FIX: itilize 'balance' pa 'balance_usdt'
+# Itilize rate_convert
 # ─────────────────────────────────────────────
 @dashboard_bp.route('/convert-htg-to-usdt', methods=['POST'])
 @login_required
@@ -296,23 +322,21 @@ def convert_htg_to_usdt():
             flash('Amount must be greater than zero.', 'error')
             return redirect(url_for('dashboard.index'))
 
-        # !! Toujou chache 'balance' (USDT) ak 'balance_htg' !!
-        profile = _get_profile(db, uid)
+        profile  = _get_profile(db, uid)
         bal_htg  = float(profile.get('balance_htg') or 0)
-        bal_usdt = float(profile.get('balance') or 0)   # <-- FIX: 'balance' pa 'balance_usdt'
+        bal_usdt = float(profile.get('balance') or 0)
 
         if amount_htg > bal_htg:
             flash(f'Not enough money. Balans HTG ou: {bal_htg:.2f} HTG.', 'error')
             return redirect(url_for('dashboard.index'))
 
-        rate        = _get_rate(db)
+        rate        = _get_rates(db)['rate_convert']
         amount_usdt = round(amount_htg / rate, 6)
         now         = datetime.now(timezone.utc).isoformat()
 
-        # !! Update 'balance' pa 'balance_usdt' !!
         db.table('profiles').update({
             'balance_htg': round(bal_htg - amount_htg, 2),
-            'balance':     round(bal_usdt + amount_usdt, 6),  # <-- FIX
+            'balance':     round(bal_usdt + amount_usdt, 6),
         }).eq('id', uid).execute()
 
         db.table('htg_transactions').insert({
@@ -326,7 +350,7 @@ def convert_htg_to_usdt():
             'created_at':  now,
         }).execute()
 
-        flash(f'Konvèsyon reyisi! {amount_htg:.2f} HTG → {amount_usdt:.6f} USDT', 'success')
+        flash(f'Konvèsyon reyisi! {amount_htg:.2f} HTG → {amount_usdt:.6f} USDT @ {rate}', 'success')
 
     except Exception as e:
         flash(f'Conversion error: {e}', 'error')
@@ -336,7 +360,7 @@ def convert_htg_to_usdt():
 
 # ─────────────────────────────────────────────
 # CONVERT USDT → HTG
-# FIX: itilize 'balance' pa 'balance_usdt'
+# Itilize rate_convert
 # ─────────────────────────────────────────────
 @dashboard_bp.route('/convert-usdt-to-htg', methods=['POST'])
 @login_required
@@ -351,22 +375,20 @@ def convert_usdt_to_htg():
             flash('Amount must be greater than zero.', 'error')
             return redirect(url_for('dashboard.index'))
 
-        # !! Toujou chache 'balance' (USDT) !!
         profile  = _get_profile(db, uid)
-        bal_usdt = float(profile.get('balance') or 0)   # <-- FIX: 'balance' pa 'balance_usdt'
+        bal_usdt = float(profile.get('balance') or 0)
         bal_htg  = float(profile.get('balance_htg') or 0)
 
         if amount_usdt > bal_usdt:
             flash(f'Not enough money. Balans USDT ou: ${bal_usdt:.2f} USDT.', 'error')
             return redirect(url_for('dashboard.index'))
 
-        rate       = _get_rate(db)
+        rate       = _get_rates(db)['rate_convert']
         amount_htg = round(amount_usdt * rate, 2)
         now        = datetime.now(timezone.utc).isoformat()
 
-        # !! Update 'balance' pa 'balance_usdt' !!
         db.table('profiles').update({
-            'balance':     round(bal_usdt - amount_usdt, 6),  # <-- FIX
+            'balance':     round(bal_usdt - amount_usdt, 6),
             'balance_htg': round(bal_htg + amount_htg, 2),
         }).eq('id', uid).execute()
 
@@ -381,7 +403,7 @@ def convert_usdt_to_htg():
             'created_at':  now,
         }).execute()
 
-        flash(f'Konvèsyon reyisi! {amount_usdt:.6f} USDT → {amount_htg:.2f} HTG', 'success')
+        flash(f'Konvèsyon reyisi! {amount_usdt:.6f} USDT → {amount_htg:.2f} HTG @ {rate}', 'success')
 
     except Exception as e:
         flash(f'Conversion error: {e}', 'error')
