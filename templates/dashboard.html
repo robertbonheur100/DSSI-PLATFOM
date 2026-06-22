@@ -323,7 +323,7 @@
         </div>
         <div class="natcash-box-rate">
           <p class="natcash-box-label">Current Rate</p>
-          <p class="natcash-box-rate-val">{{ "%.2f"|format(rate) }} HTG = 1 USDT</p>
+          <p class="natcash-box-rate-val">{{ "%.2f"|format(rate_buy) }} HTG = 1 USDT</p>
         </div>
       </div>
       <div class="card">
@@ -333,7 +333,7 @@
             <div class="form-group">
               <label>Amount in HTG</label>
               <input type="number" name="amount_htg" step="0.01" min="1" placeholder="e.g. 1300" required
-                oninput="document.getElementById('buy-usdt-eq').textContent='≈ '+(parseFloat(this.value||0)/{{ rate }}).toFixed(4)+' USDT'">
+              oninput="document.getElementById('buy-usdt-eq').textContent='≈ '+(parseFloat(this.value||0)/{{ rate }}).toFixed(4)+' USDT'">
               <small style="color:var(--gold);font-size:12px" id="buy-usdt-eq">≈ 0.0000 USDT</small>
             </div>
             <div class="form-group">
@@ -402,7 +402,7 @@
             <div class="form-group">
               <label>USDT Amount to Sell</label>
               <input type="number" name="amount_usdt" step="0.000001" min="0.01" placeholder="e.g. 10.00" required
-                oninput="document.getElementById('sell-htg-eq').textContent='≈ '+(parseFloat(this.value||0)*{{ rate }}).toFixed(2)+' HTG'">
+               oninput="document.getElementById('sell-htg-eq').textContent='≈ '+(parseFloat(this.value||0)*{{ rate_sell }}).toFixed(2)+' HTG'">
               <small style="color:var(--gold);font-size:12px" id="sell-htg-eq">≈ 0.00 HTG</small>
             </div>
             <div class="form-group">
