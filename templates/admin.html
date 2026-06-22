@@ -275,7 +275,7 @@
             <tr class="{{ 'row-pending' if w.get('status') == 'pending' else '' }}">
               <td>{{ user_map.get(w.get('user_id'), '—') }}</td>
               <td><strong>${{ w_amt }}</strong></td>
-              <td class="text-mono">{{ (w.get('wallet_address') or '—')[:18] }}…</td>
+             <td class="text-mono" style="max-width:200px;word-break:break-all;white-space:normal">{{ w.get('wallet_address') or '—' }}</td>
               <td>{{ w.get('network','—') }}</td>
               <td><span class="status-badge status--{{ w.get('status','') }}">{{ w.get('status','').upper() }}</span></td>
               <td class="text-muted">{{ (w.get('created_at') or '')[:10] }}</td>
