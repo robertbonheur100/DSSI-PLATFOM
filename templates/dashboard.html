@@ -169,11 +169,12 @@
           <div class="smm-services-grid">
             {% for s in smm_services if s.platform == pf %}
             <div class="smm-service-card">
-              <div class="smm-service-type">{{ s.service_type|capitalize }}</div>
-              <div class="smm-service-qty">{{ s.quantity }}</div>
-              <div class="smm-service-price">{{ "%.2f"|format(s.price_htg) }} HTG</div>
+              <div class="smm-service-type">{{ s.category|capitalize }}</div>
+              <div class="smm-service-name">{{ s.service_name or (s.platform ~ ' ' ~ s.category) }}</div>
+              <div class="smm-service-range">{{ s.min_quantity }}–{{ s.max_quantity }}</div>
+              <div class="smm-service-price">{{ "%.2f"|format(s.selling_price_htg) }} HTG / 1000</div>
               <button type="button" class="btn btn--sm btn--primary btn--full"
-                onclick="openSmmOrderModal('{{ s.id }}', '{{ pf }}', '{{ s.service_type }}', {{ s.quantity }}, {{ s.price_htg }})">
+                onclick="openSmmOrderModal('{{ s.id }}', '{{ pf }}', '{{ s.category }}', {{ s.min_quantity }}, {{ s.max_quantity }}, {{ s.selling_price_htg }}, '{{ s.service_name or '' }}')">
                 Achte
               </button>
             </div>
@@ -198,6 +199,12 @@
               <label id="smm-modal-desc">—</label>
             </div>
             <div class="form-group">
+              <label>Kantite (<span id="smm-modal-range">—</span>)</label>
+              <input type="number" name="quantity" id="smm-modal-qty" min="1" required
+                oninput="updateSmmPricePreview()">
+              <small style="color:var(--gold);font-size:12px" id="smm-modal-total">≈ 0.00 HTG</small>
+            </div>
+            <div class="form-group">
               <label>Lyen paj/pòs/videyo a (URL piblik)</label>
               <input type="text" name="link" placeholder="https://facebook.com/... oswa https://youtube.com/..." required>
             </div>
@@ -219,9 +226,9 @@
             {% for o in smm_orders %}
             {% set svc = smm_service_map.get(o.service_id) %}
             <tr>
-              <td>{{ svc.platform if svc else '—' }} — {{ svc.service_type if svc else '—' }}</td>
+              <td>{{ svc.platform if svc else '—' }} — {{ svc.category if svc else '—' }}</td>
               <td>{{ o.quantity }}</td>
-              <td>{{ "%.2f"|format(o.price_htg) }} HTG</td>
+              <td>{{ "%.2f"|format(o.charge_htg) }} HTG</td>
               <td class="text-mono text-muted">{{ (o.link or '—')[:28] }}</td>
               <td><span class="status-badge status--{{ o.status }}">{{ o.status.upper() }}</span></td>
               <td class="text-muted">{{ (o.created_at or '')[:16] }}</td>
@@ -741,6 +748,15 @@
   font-weight: 700;
   color: var(--text-1, #e8eaf0);
 }
+.smm-service-name {
+  font-size: .8rem;
+  color: var(--text-2, #9aa3b8);
+  margin: .15rem 0;
+}
+.smm-service-range {
+  font-size: .75rem;
+  color: var(--text-2, #9aa3b8);
+}
 .smm-service-price {
   font-size: .95rem;
   color: var(--gold, #d4a843);
@@ -790,11 +806,25 @@ function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
 }
 
-function openSmmOrderModal(serviceId, platform, type, qty, price) {
+let _smmSellingPricePer1000 = 0;
+
+function openSmmOrderModal(serviceId, platform, category, minQty, maxQty, sellingPriceHtg, serviceName) {
   document.getElementById('smm-service-id').value = serviceId;
-  document.getElementById('smm-modal-title').textContent = platform + ' — ' + type;
-  document.getElementById('smm-modal-desc').textContent = qty + ' ' + type + ' pou ' + price.toFixed(2) + ' HTG';
+  document.getElementById('smm-modal-title').textContent = platform + ' — ' + category;
+  document.getElementById('smm-modal-desc').textContent = (serviceName || (platform + ' ' + category)) + ' — ' + sellingPriceHtg.toFixed(2) + ' HTG pou chak 1000';
+  document.getElementById('smm-modal-range').textContent = minQty + ' – ' + maxQty;
+  const qtyInput = document.getElementById('smm-modal-qty');
+  qtyInput.min = minQty;
+  qtyInput.max = maxQty;
+  qtyInput.value = minQty;
+  _smmSellingPricePer1000 = sellingPriceHtg;
+  updateSmmPricePreview();
   document.getElementById('smm-order-modal').style.display = 'flex';
+}
+function updateSmmPricePreview() {
+  const qty = parseFloat(document.getElementById('smm-modal-qty').value || 0);
+  const total = (qty / 1000) * _smmSellingPricePer1000;
+  document.getElementById('smm-modal-total').textContent = '≈ ' + total.toFixed(2) + ' HTG';
 }
 function closeSmmOrderModal() {
   document.getElementById('smm-order-modal').style.display = 'none';
