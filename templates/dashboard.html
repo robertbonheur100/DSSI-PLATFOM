@@ -17,6 +17,9 @@
       <a href="{{ url_for('football.hub') }}" class="nav-item">
      ⚽ Football Hub
       </a>
+      <a href="#smm" class="nav-item" data-tab="smm">
+        <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>Sèvis SMM
+      </a>
       <a href="#investments"  class="nav-item" data-tab="investments">
         <svg viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>Investments
       </a>
@@ -140,6 +143,91 @@
             </tr>
             {% else %}
             <tr><td colspan="4" class="text-center text-muted">No transactions yet</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── SMM PANEL ── #}
+    <section class="tab-section" id="tab-smm">
+      <div class="section-intro">
+        <h2>Sèvis SMM — Abonè / View / Like</h2>
+        <p>Achte abonè, view oswa like pou Facebook, YouTube, Instagram ak lòt rezo sosyal. Peman fèt ak balans HTG ou. Livrezon fèt otomatikman nan yon sik ki woule chak 20 minit.</p>
+      </div>
+
+      <div class="info-box" style="margin-bottom:1.25rem">
+        🪙 Balans HTG ou: <strong style="color:#f59e0b">{{ "%.2f"|format(profile.balance_htg or 0) }} HTG</strong>
+      </div>
+
+      {% set platforms = smm_services | map(attribute='platform') | unique | list %}
+      {% if smm_services %}
+        {% for pf in platforms %}
+        <div class="card">
+          <div class="card-header"><h3>{{ pf }}</h3></div>
+          <div class="smm-services-grid">
+            {% for s in smm_services if s.platform == pf %}
+            <div class="smm-service-card">
+              <div class="smm-service-type">{{ s.service_type|capitalize }}</div>
+              <div class="smm-service-qty">{{ s.quantity }}</div>
+              <div class="smm-service-price">{{ "%.2f"|format(s.price_htg) }} HTG</div>
+              <button type="button" class="btn btn--sm btn--primary btn--full"
+                onclick="openSmmOrderModal('{{ s.id }}', '{{ pf }}', '{{ s.service_type }}', {{ s.quantity }}, {{ s.price_htg }})">
+                Achte
+              </button>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="card"><div class="empty-state"><p>Pa gen sèvis SMM disponib kounye a.</p></div></div>
+      {% endif %}
+
+      {# Modal fòm kòmand — kache pa defo #}
+      <div id="smm-order-modal" class="smm-modal-overlay" style="display:none">
+        <div class="card smm-modal-card">
+          <div class="card-header">
+            <h3 id="smm-modal-title">Kòmand SMM</h3>
+            <button type="button" class="btn btn--xs btn--outline" onclick="closeSmmOrderModal()">✕</button>
+          </div>
+          <form method="POST" action="{{ url_for('dashboard.smm_order') }}" class="form-body">
+            <input type="hidden" name="service_id" id="smm-service-id">
+            <div class="form-group">
+              <label id="smm-modal-desc">—</label>
+            </div>
+            <div class="form-group">
+              <label>Lyen paj/pòs/videyo a (URL piblik)</label>
+              <input type="text" name="link" placeholder="https://facebook.com/... oswa https://youtube.com/..." required>
+            </div>
+            <div class="info-box" style="margin:0">
+              ⚡ Lyen an dwe piblik pou founisè a ka livre abonè/view/like yo.
+            </div>
+            <button type="submit" class="btn btn--primary btn--full"
+              onclick="return confirm('Konfime kòmand sa a?')">Konfime Kòmand</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Istorik Kòmand SMM Mwen</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Sèvis</th><th>Kantite</th><th>Pri</th><th>Lyen</th><th>Statis</th><th>Dat</th></tr></thead>
+            <tbody>
+            {% for o in smm_orders %}
+            {% set svc = smm_service_map.get(o.service_id) %}
+            <tr>
+              <td>{{ svc.platform if svc else '—' }} — {{ svc.service_type if svc else '—' }}</td>
+              <td>{{ o.quantity }}</td>
+              <td>{{ "%.2f"|format(o.price_htg) }} HTG</td>
+              <td class="text-mono text-muted">{{ (o.link or '—')[:28] }}</td>
+              <td><span class="status-badge status--{{ o.status }}">{{ o.status.upper() }}</span></td>
+              <td class="text-muted">{{ (o.created_at or '')[:16] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted">Ou poko fè okenn kòmand SMM</td></tr>
             {% endfor %}
             </tbody>
           </table>
@@ -333,7 +421,7 @@
             <div class="form-group">
               <label>Amount in HTG</label>
               <input type="number" name="amount_htg" step="0.01" min="1" placeholder="e.g. 1300" required
-              oninput="document.getElementById('buy-usdt-eq').textContent='≈ '+(parseFloat(this.value||0)/{{ rate }}).toFixed(4)+' USDT'">
+              oninput="document.getElementById('buy-usdt-eq').textContent='≈ '+(parseFloat(this.value||0)/{{ rate_buy }}).toFixed(4)+' USDT'">
               <small style="color:var(--gold);font-size:12px" id="buy-usdt-eq">≈ 0.0000 USDT</small>
             </div>
             <div class="form-group">
@@ -627,6 +715,47 @@
   </main>
 </div>
 
+<style>
+.smm-services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: .9rem;
+  padding: 1rem 1.5rem 1.5rem;
+}
+.smm-service-card {
+  background: var(--surface-2, #14171f);
+  border: 1px solid var(--border, #222633);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+}
+.smm-service-type {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-2, #9aa3b8);
+  margin-bottom: .3rem;
+}
+.smm-service-qty {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-1, #e8eaf0);
+}
+.smm-service-price {
+  font-size: .95rem;
+  color: var(--gold, #d4a843);
+  margin: .3rem 0 .7rem;
+  font-weight: 600;
+}
+.smm-modal-overlay {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(0,0,0,.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.smm-modal-card { max-width: 420px; width: 100%; margin: 0; }
+</style>
+
 {% endblock %}
 {% block scripts %}
 <script>
@@ -638,7 +767,7 @@ function switchTab(name) {
   if (s) s.classList.add('active');
   if (n) n.classList.add('active');
   const titles = {
-    'overview':'Overview','investments':'Investments','deposit':'Deposit',
+    'overview':'Overview','smm':'Sèvis SMM','investments':'Investments','deposit':'Deposit',
     'withdraw':'Withdraw','buy-crypto':'Buy Crypto','sell-crypto':'Sell Crypto',
     'htg-wallet':'HTG Wallet','history':'History'
   };
@@ -659,6 +788,21 @@ function copyAddress(id) {
 
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
+}
+
+function openSmmOrderModal(serviceId, platform, type, qty, price) {
+  document.getElementById('smm-service-id').value = serviceId;
+  document.getElementById('smm-modal-title').textContent = platform + ' — ' + type;
+  document.getElementById('smm-modal-desc').textContent = qty + ' ' + type + ' pou ' + price.toFixed(2) + ' HTG';
+  document.getElementById('smm-order-modal').style.display = 'flex';
+}
+function closeSmmOrderModal() {
+  document.getElementById('smm-order-modal').style.display = 'none';
+}
+
+// Si redireksyon an gen #smm nan URL la (apre yon kòmand SMM), rete/al sou tab SMM la
+if (window.location.hash === '#smm') {
+  switchTab('smm');
 }
 </script>
 {% endblock %}
