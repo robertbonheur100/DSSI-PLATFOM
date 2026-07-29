@@ -34,10 +34,9 @@ class Config:
     USDT_BEP20_ADDRESS = '0x2ba88a4d6cabaded5d06c75ef3b3efec386acaef'
     WHATSAPP_NUMBER    = '50941727986'
 
-    # ── SMM Panel (smmzio.com) ──────────────────────────────────
-    # IMPORTANT: Set SMMZIO_API_KEY as an environment variable on Render.
-    # Do NOT commit the real key to a public GitHub repo.
-    SMMZIO_API_URL = os.environ.get('SMMZIO_API_URL', 'https://smmzio.com/api/v2')
-    SMMZIO_API_KEY = os.environ.get('SMMZIO_API_KEY', '')
+    # ── SMM Panel ────────────────────────────────────────────────
+    # NOTE: api_url / api_key pou chak founisè kounye a estoke nan tab
+    # `smm_providers` (Supabase), jere nan Admin → Sèvis SMM. Pa gen
+    # kle API ki ekri isit la ankò.
     # Chak konbyen minit backend la tcheke/soumèt lòd SMM yo
     SMM_CHECK_INTERVAL_MINUTES = int(os.environ.get('SMM_CHECK_INTERVAL_MINUTES', 20))
