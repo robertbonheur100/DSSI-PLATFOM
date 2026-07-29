@@ -87,6 +87,17 @@ def index():
             .select('*').eq('user_id', uid)\
             .order('created_at', desc=True).limit(20).execute().data or []
 
+        # ── SMM: sèvis aktif + lòd itilizate a ──
+        smm_services = db.table('smm_services')\
+            .select('*').eq('active', True)\
+            .order('platform').order('quantity').execute().data or []
+
+        smm_orders = db.table('smm_orders')\
+            .select('*').eq('user_id', uid)\
+            .order('created_at', desc=True).limit(30).execute().data or []
+
+        smm_service_map = {s['id']: s for s in smm_services}
+
         l1_res   = db.table('profiles').select('id', count='exact').eq('referred_by', uid).execute()
         l1_count = getattr(l1_res, 'count', 0) or 0
 
@@ -120,6 +131,9 @@ def index():
             sell_requests=sell_requests,
             htg_transactions=htg_transactions,
             htg_withdrawals=htg_withdrawals,
+            smm_services=smm_services,
+            smm_orders=smm_orders,
+            smm_service_map=smm_service_map,
         )
 
     except Exception as e:
@@ -467,3 +481,69 @@ def htg_withdraw():
         flash(f'Withdrawal error: {e}', 'error')
 
     return redirect(url_for('dashboard.index'))
+
+
+# ─────────────────────────────────────────────
+# SMM PANEL — user places an order (abonè/view/like)
+# Peman fèt ak balans HTG. Backend depoze lòd la bay founisè a
+# nan pwochen sik scheduler la (chak 20 minit — wè scheduler.py).
+# ─────────────────────────────────────────────
+@dashboard_bp.route('/smm/order', methods=['POST'])
+@login_required
+def smm_order():
+    db  = get_admin_supabase()
+    uid = session['user_id']
+
+    try:
+        service_id = int(request.form.get('service_id', 0))
+        link       = request.form.get('link', '').strip()
+
+        if not link:
+            flash('Ou dwe mete lyen paj/pòs/videyo a.', 'error')
+            return redirect(url_for('dashboard.index') + '#smm')
+
+        service_res = db.table('smm_services').select('*').eq('id', service_id).eq('active', True).execute()
+        if not service_res.data:
+            flash('Sèvis sa a pa disponib ankò.', 'error')
+            return redirect(url_for('dashboard.index') + '#smm')
+
+        service = service_res.data[0]
+        price   = float(service['price_htg'])
+
+        profile = _get_profile(db, uid)
+        bal_htg = float(profile.get('balance_htg') or 0)
+
+        if bal_htg < price:
+            flash(f'Balans HTG ou pa sifi. Ou bezwen {price:.2f} HTG.', 'error')
+            return redirect(url_for('dashboard.index') + '#smm')
+
+        now = datetime.now(timezone.utc).isoformat()
+        new_bal = round(bal_htg - price, 2)
+        db.table('profiles').update({'balance_htg': new_bal}).eq('id', uid).execute()
+
+        db.table('smm_orders').insert({
+            'user_id':    uid,
+            'service_id': service_id,
+            'link':       link,
+            'quantity':   service['quantity'],
+            'price_htg':  price,
+            'status':     'pending',
+            'created_at': now,
+            'updated_at': now,
+        }).execute()
+
+        db.table('htg_transactions').insert({
+            'user_id':     uid,
+            'type':        'smm_order',
+            'amount_htg':  -price,
+            'description': f"Lòd SMM — {service['platform']} {service['service_type']} x{service['quantity']}",
+            'status':      'completed',
+            'created_at':  now,
+        }).execute()
+
+        flash('Lòd ou soumèt! Li ap livre sou rezo sosyal ou nan pwochen sik (chak 20 minit).', 'success')
+
+    except Exception as e:
+        flash(f'Erè lòd SMM: {e}', 'error')
+
+    return redirect(url_for('dashboard.index') + '#smm')
