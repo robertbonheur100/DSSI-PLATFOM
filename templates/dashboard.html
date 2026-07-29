@@ -153,8 +153,8 @@
     {# ── SMM PANEL ── #}
     <section class="tab-section" id="tab-smm">
       <div class="section-intro">
-        <h2>Sèvis SMM — Abonè / View / Like</h2>
-        <p>Achte abonè, view oswa like pou Facebook, YouTube, Instagram ak lòt rezo sosyal. Peman fèt ak balans HTG ou. Livrezon fèt otomatikman nan yon sik ki woule chak 20 minit.</p>
+        <h2>Sèvis grandi medya — Abone / View / Likes</h2>
+        <p>Achte abone, view oswa likes pou Facebook, YouTube, Instagram ak lòt rezo sosyal. Peman fèt ak balans HTG ou. Livrezon fèt otomatikman nan yon sik ki woule chak 20 minit.</p>
       </div>
 
       <div class="info-box" style="margin-bottom:1.25rem">
@@ -183,14 +183,14 @@
         </div>
         {% endfor %}
       {% else %}
-      <div class="card"><div class="empty-state"><p>Pa gen sèvis SMM disponib kounye a.</p></div></div>
+      <div class="card"><div class="empty-state"><p>Pa gen sèvis  disponib kounye a.</p></div></div>
       {% endif %}
 
       {# Modal fòm kòmand — kache pa defo #}
       <div id="smm-order-modal" class="smm-modal-overlay" style="display:none">
         <div class="card smm-modal-card">
           <div class="card-header">
-            <h3 id="smm-modal-title">Kòmand SMM</h3>
+            <h3 id="smm-modal-title">Kòmand medya</h3>
             <button type="button" class="btn btn--xs btn--outline" onclick="closeSmmOrderModal()">✕</button>
           </div>
           <form method="POST" action="{{ url_for('dashboard.smm_order') }}" class="form-body">
@@ -209,7 +209,7 @@
               <input type="text" name="link" placeholder="https://facebook.com/... oswa https://youtube.com/..." required>
             </div>
             <div class="info-box" style="margin:0">
-              ⚡ Lyen an dwe piblik pou founisè a ka livre abonè/view/like yo.
+              ⚡ Lyen an dwe piblik pou DSSI ka livre abone/view/likes yo.
             </div>
             <button type="submit" class="btn btn--primary btn--full"
               onclick="return confirm('Konfime kòmand sa a?')">Konfime Kòmand</button>
@@ -218,7 +218,7 @@
       </div>
 
       <div class="card">
-        <div class="card-header"><h3>Istorik Kòmand SMM Mwen</h3></div>
+        <div class="card-header"><h3>Istorik Kòmand Mwen</h3></div>
         <div class="table-wrap">
           <table class="data-table">
             <thead><tr><th>Sèvis</th><th>Kantite</th><th>Pri</th><th>Lyen</th><th>Statis</th><th>Dat</th></tr></thead>
@@ -234,7 +234,7 @@
               <td class="text-muted">{{ (o.created_at or '')[:16] }}</td>
             </tr>
             {% else %}
-            <tr><td colspan="6" class="text-center text-muted">Ou poko fè okenn kòmand SMM</td></tr>
+            <tr><td colspan="6" class="text-center text-muted">Ou poko fè okenn kòmand </td></tr>
             {% endfor %}
             </tbody>
           </table>
