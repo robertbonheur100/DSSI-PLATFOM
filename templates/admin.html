@@ -35,6 +35,10 @@
         🪙 HTG Withdrawals
         {% if pending_htg_wds %}<span class="badge">{{ pending_htg_wds|length }}</span>{% endif %}
       </a>
+      <a class="nav-item" data-tab="smm">
+        📲 Sèvis SMM
+        {% if pending_smm %}<span class="badge">{{ pending_smm|length }}</span>{% endif %}
+      </a>
       <a class="nav-item" data-tab="exchange-rate">📊 Exchange Rate</a>
       <a class="nav-item" data-tab="investments">📈 Investments</a>
       <a class="nav-item" data-tab="suspend-plan">🚫 Suspend Plan</a>
@@ -83,6 +87,10 @@
         <div class="stat-card stat-card--warn">
           <div class="stat-icon">🪙</div>
           <div class="stat-body"><p class="stat-label">Pending HTG WDs</p><p class="stat-value">{{ pending_htg_wds|length }}</p></div>
+        </div>
+        <div class="stat-card stat-card--warn">
+          <div class="stat-icon">📲</div>
+          <div class="stat-body"><p class="stat-label">Pending SMM Orders</p><p class="stat-value">{{ pending_smm|length }}</p></div>
         </div>
         <div class="stat-card">
           <div class="stat-icon">📈</div>
@@ -418,6 +426,121 @@
             </tr>
             {% else %}
             <tr><td colspan="6" class="text-center text-muted">No HTG withdrawals</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ── SMM PANEL (SÈVIS ABONÈ/VIEW/LIKE) ── #}
+    <section class="tab-section" id="tab-smm">
+      <div class="card" style="border-color:rgba(139,92,246,.3)">
+        <div class="card-header" style="border-color:rgba(139,92,246,.3)">
+          <h3 style="color:#8b5cf6">📲 Ajoute Nouvo Sèvis SMM</h3>
+          <p style="color:var(--text-2);font-size:.85rem;margin-top:.3rem">
+            Chak sèvis se yon konbinezon (platfòm + tip + kantite fiks) ak yon pri an goud.
+            "Provider Service ID" se ID sèvis la kay smmzio.com (jwenn li nan API <code>action=services</code> smmzio.com la).
+          </p>
+        </div>
+        <form method="POST" action="{{ url_for('admin.add_smm_service') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Platfòm</label>
+              <select name="platform" required>
+                <option value="Facebook">Facebook</option>
+                <option value="YouTube">YouTube</option>
+                <option value="Instagram">Instagram</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="TikTok">TikTok</option>
+                <option value="Twitter/X">Twitter/X</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Tip Sèvis</label>
+              <select name="service_type" required>
+                <option value="abonè">Abonè</option>
+                <option value="view">View</option>
+                <option value="like">Like</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Provider Service ID (smmzio.com)</label>
+              <input type="text" name="provider_service_id" placeholder="e.g. 4152" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Kantite (500, 1000, ...)</label>
+              <input type="number" name="quantity" min="1" placeholder="e.g. 500" required>
+            </div>
+            <div class="form-group">
+              <label>Pri (HTG)</label>
+              <input type="number" name="price_htg" step="0.01" min="0.01" placeholder="e.g. 25" required>
+            </div>
+            <div class="form-group form-group--action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn--primary">+ Ajoute Sèvis</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Tout Sèvis SMM ({{ smm_services|length }})</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Platfòm</th><th>Tip</th><th>Kantite</th><th>Pri</th><th>Provider ID</th><th>Statis</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for s in smm_services %}
+            <tr>
+              <td><strong>{{ s.platform }}</strong></td>
+              <td>{{ s.service_type }}</td>
+              <td>{{ s.quantity }}</td>
+              <td>{{ "%.2f"|format(s.price_htg) }} HTG</td>
+              <td class="text-mono text-muted">{{ s.provider_service_id }}</td>
+              <td><span class="status-badge status--{{ 'approved' if s.active else 'rejected' }}">{{ 'AKTIF' if s.active else 'DEZAKTIVE' }}</span></td>
+              <td>
+                <div class="action-btns">
+                  <form method="POST" action="{{ url_for('admin.toggle_smm_service', service_id=s.id) }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--outline">{{ '🚫 Dezaktive' if s.active else '✅ Aktive' }}</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin.delete_smm_service', service_id=s.id) }}" style="display:inline">
+                    <button type="submit" class="btn btn--xs btn--danger" onclick="return confirm('Efase sèvis sa a?')">✗ Efase</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted">Pa gen sèvis SMM ankò</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Kòmand SMM Resan ({{ smm_orders|length }})</h3></div>
+        <p style="color:var(--text-2);font-size:.8rem;padding:0 1.5rem .5rem">
+          Backend la soumèt lòd "pending" yo bay smmzio.com epi tcheke statis "processing" yo otomatikman chak
+          {{ 20 }} minit — pa gen aksyon manyèl obligatwa isit la, se yon vi jeneral sèlman.
+        </p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>User</th><th>Kantite</th><th>Pri</th><th>Lyen</th><th>Provider Order ID</th><th>Statis</th><th>Dat</th></tr></thead>
+            <tbody>
+            {% for o in smm_orders %}
+            <tr>
+              <td>{{ user_map.get(o.get('user_id'), '—') }}</td>
+              <td>{{ o.get('quantity','—') }}</td>
+              <td>{{ "%.2f"|format(o.get('price_htg',0)) }} HTG</td>
+              <td class="text-mono text-muted">{{ (o.get('link') or '—')[:25] }}</td>
+              <td class="text-mono text-muted">{{ o.get('provider_order_id') or '—' }}</td>
+              <td><span class="status-badge status--{{ o.get('status','') }}">{{ o.get('status','').upper() }}</span></td>
+              <td class="text-muted">{{ (o.get('created_at') or '')[:16] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted">Pa gen kòmand SMM ankò</td></tr>
             {% endfor %}
             </tbody>
           </table>
