@@ -90,13 +90,19 @@ def index():
         # ── SMM: sèvis aktif + lòd itilizate a ──
         smm_services = db.table('smm_services')\
             .select('*').eq('active', True)\
-            .order('platform').order('quantity').execute().data or []
+            .order('platform').order('category').execute().data or []
 
         smm_orders = db.table('smm_orders')\
             .select('*').eq('user_id', uid)\
             .order('created_at', desc=True).limit(30).execute().data or []
 
         smm_service_map = {s['id']: s for s in smm_services}
+        # Ajoute tou sèvis ki nan istorik lòd la menm si yo dezaktive kounye a
+        missing_ids = [o['service_id'] for o in smm_orders if o['service_id'] not in smm_service_map]
+        if missing_ids:
+            extra = db.table('smm_services').select('*').in_('id', missing_ids).execute().data or []
+            for s in extra:
+                smm_service_map[s['id']] = s
 
         l1_res   = db.table('profiles').select('id', count='exact').eq('referred_by', uid).execute()
         l1_count = getattr(l1_res, 'count', 0) or 0
@@ -485,8 +491,9 @@ def htg_withdraw():
 
 # ─────────────────────────────────────────────
 # SMM PANEL — user places an order (abonè/view/like)
-# Peman fèt ak balans HTG. Backend depoze lòd la bay founisè a
+# Peman fèt ak balans HTG. Backend soumèt lòd la bay founisè a
 # nan pwochen sik scheduler la (chak 20 minit — wè scheduler.py).
+# Pri kalkile pwopòsyonèlman: charge_htg = (quantity / 1000) * selling_price_htg
 # ─────────────────────────────────────────────
 @dashboard_bp.route('/smm/order', methods=['POST'])
 @login_required
@@ -497,6 +504,7 @@ def smm_order():
     try:
         service_id = int(request.form.get('service_id', 0))
         link       = request.form.get('link', '').strip()
+        quantity   = int(request.form.get('quantity', 0))
 
         if not link:
             flash('Ou dwe mete lyen paj/pòs/videyo a.', 'error')
@@ -508,35 +516,46 @@ def smm_order():
             return redirect(url_for('dashboard.index') + '#smm')
 
         service = service_res.data[0]
-        price   = float(service['price_htg'])
+        min_qty = int(service.get('min_quantity') or 1)
+        max_qty = int(service.get('max_quantity') or 1000000)
+
+        if quantity < min_qty or quantity > max_qty:
+            flash(f'Kantite a dwe ant {min_qty} ak {max_qty}.', 'error')
+            return redirect(url_for('dashboard.index') + '#smm')
+
+        charge_htg = round((quantity / 1000.0) * float(service['selling_price_htg']), 2)
 
         profile = _get_profile(db, uid)
         bal_htg = float(profile.get('balance_htg') or 0)
 
-        if bal_htg < price:
-            flash(f'Balans HTG ou pa sifi. Ou bezwen {price:.2f} HTG.', 'error')
+        if bal_htg < charge_htg:
+            flash(f'Balans HTG ou pa sifi. Ou bezwen {charge_htg:.2f} HTG.', 'error')
             return redirect(url_for('dashboard.index') + '#smm')
 
         now = datetime.now(timezone.utc).isoformat()
-        new_bal = round(bal_htg - price, 2)
+        new_bal = round(bal_htg - charge_htg, 2)
         db.table('profiles').update({'balance_htg': new_bal}).eq('id', uid).execute()
 
+        estimated_provider_cost = round((quantity / 1000.0) * float(service.get('provider_price_usd') or 0), 4)
+
         db.table('smm_orders').insert({
-            'user_id':    uid,
-            'service_id': service_id,
-            'link':       link,
-            'quantity':   service['quantity'],
-            'price_htg':  price,
-            'status':     'pending',
-            'created_at': now,
-            'updated_at': now,
+            'user_id':             uid,
+            'service_id':          service_id,
+            'provider_id':         service['provider_id'],
+            'link':                link,
+            'quantity':            quantity,
+            'charge_htg':          charge_htg,
+            'provider_charge_usd': estimated_provider_cost,
+            'status':              'pending',
+            'created_at':          now,
+            'updated_at':          now,
         }).execute()
 
         db.table('htg_transactions').insert({
             'user_id':     uid,
             'type':        'smm_order',
-            'amount_htg':  -price,
-            'description': f"Lòd SMM — {service['platform']} {service['service_type']} x{service['quantity']}",
+            'amount_htg':  -charge_htg,
+            'description': f"Lòd SMM — {service['platform']} {service['category']} x{quantity}",
             'status':      'completed',
             'created_at':  now,
         }).execute()
