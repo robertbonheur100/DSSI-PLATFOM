@@ -435,16 +435,95 @@
 
     {# ── SMM PANEL (SÈVIS ABONÈ/VIEW/LIKE) ── #}
     <section class="tab-section" id="tab-smm">
+
+      {# ── Founisè ── #}
+      <div class="card" style="border-color:rgba(52,211,153,.3)">
+        <div class="card-header" style="border-color:rgba(52,211,153,.3)">
+          <h3 style="color:#34d399">🌐 Ajoute Nouvo Founisè SMM</h3>
+          <p style="color:var(--text-2);font-size:.85rem;margin-top:.3rem">
+            Chak founisè se yon kont API separe (egzanp smmzio.com). Ou dwe gen balans an dola SOU
+            sit founisè a li menm — sa a pa gen rapò ak balans HTG user yo sou DSSI.
+          </p>
+        </div>
+        <form method="POST" action="{{ url_for('admin.add_smm_provider') }}" class="form-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Non Founisè</label>
+              <input type="text" name="name" placeholder="e.g. smmzio.com" required>
+            </div>
+            <div class="form-group">
+              <label>API URL</label>
+              <input type="text" name="api_url" placeholder="https://smmzio.com/api/v2" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="text" name="api_key" placeholder="Kle API a" required>
+            </div>
+            <div class="form-group">
+              <label>Deviz (currency)</label>
+              <input type="text" name="currency" value="USD" placeholder="USD">
+            </div>
+            <div class="form-group form-group--action">
+              <label>&nbsp;</label>
+              <button type="submit" class="btn btn--success">+ Ajoute Founisè</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Founisè SMM ({{ smm_providers|length }})</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Non</th><th>API URL</th><th>Deviz</th><th>Statis</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for p in smm_providers %}
+            <tr>
+              <td><strong>{{ p.name }}</strong></td>
+              <td class="text-mono text-muted">{{ p.api_url }}</td>
+              <td>{{ p.currency }}</td>
+              <td><span class="status-badge status--{{ 'approved' if p.active else 'rejected' }}">{{ 'AKTIF' if p.active else 'DEZAKTIVE' }}</span></td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.toggle_smm_provider', provider_id=p.id) }}" style="display:inline">
+                  <button type="submit" class="btn btn--xs btn--outline">{{ '🚫 Dezaktive' if p.active else '✅ Aktive' }}</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted">Pa gen founisè ankò</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# ── Sèvis ── #}
       <div class="card" style="border-color:rgba(139,92,246,.3)">
         <div class="card-header" style="border-color:rgba(139,92,246,.3)">
           <h3 style="color:#8b5cf6">📲 Ajoute Nouvo Sèvis SMM</h3>
           <p style="color:var(--text-2);font-size:.85rem;margin-top:.3rem">
-            Chak sèvis se yon konbinezon (platfòm + tip + kantite fiks) ak yon pri an goud.
-            "Provider Service ID" se ID sèvis la kay smmzio.com (jwenn li nan API <code>action=services</code> smmzio.com la).
+            "Provider Service ID" se ID sèvis la kay founisè a (jwenn li nan API <code>action=services</code> founisè a).
+            Pri yo se PA CHAK 1000 INITE (estanda endistri SMM panel) — egzanp si "Selling Price HTG" = 25,
+            yon lòd 500 ap koute 12.50 HTG.
           </p>
         </div>
         <form method="POST" action="{{ url_for('admin.add_smm_service') }}" class="form-body">
           <div class="form-row">
+            <div class="form-group">
+              <label>Founisè</label>
+              <select name="provider_id" required>
+                <option value="">Chwazi founisè…</option>
+                {% for p in smm_providers %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Provider Service ID</label>
+              <input type="text" name="provider_service_id" placeholder="e.g. 4152" required>
+            </div>
             <div class="form-group">
               <label>Platfòm</label>
               <select name="platform" required>
@@ -456,27 +535,55 @@
                 <option value="Twitter/X">Twitter/X</option>
               </select>
             </div>
+          </div>
+          <div class="form-row">
             <div class="form-group">
-              <label>Tip Sèvis</label>
-              <select name="service_type" required>
-                <option value="abonè">Abonè</option>
-                <option value="view">View</option>
-                <option value="like">Like</option>
-              </select>
+              <label>Kategori (abonè/view/like)</label>
+              <input type="text" name="category" placeholder="e.g. abonè" required>
             </div>
             <div class="form-group">
-              <label>Provider Service ID (smmzio.com)</label>
-              <input type="text" name="provider_service_id" placeholder="e.g. 4152" required>
+              <label>Non Sèvis (deskriptif)</label>
+              <input type="text" name="service_name" placeholder="e.g. Facebook Page Followers — Real">
+            </div>
+            <div class="form-group">
+              <label>Deskripsyon (opsyonèl)</label>
+              <input type="text" name="description" placeholder="Detay siplemantè">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Kantite (500, 1000, ...)</label>
-              <input type="number" name="quantity" min="1" placeholder="e.g. 500" required>
+              <label>Kantite Min</label>
+              <input type="number" name="min_quantity" min="1" placeholder="e.g. 100" required>
             </div>
             <div class="form-group">
-              <label>Pri (HTG)</label>
-              <input type="number" name="price_htg" step="0.01" min="0.01" placeholder="e.g. 25" required>
+              <label>Kantite Max</label>
+              <input type="number" name="max_quantity" min="1" placeholder="e.g. 10000" required>
+            </div>
+            <div class="form-group">
+              <label>Pri Founisè ($ pou 1000)</label>
+              <input type="number" name="provider_price_usd" step="0.0001" min="0" placeholder="e.g. 0.10">
+            </div>
+            <div class="form-group">
+              <label>Pri Vann (HTG pou 1000)</label>
+              <input type="number" name="selling_price_htg" step="0.01" min="0.01" placeholder="e.g. 25" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex-direction:row;align-items:center;gap:.5rem">
+              <input type="checkbox" name="refill" id="smm-refill" style="width:auto">
+              <label for="smm-refill" style="margin:0">Refill disponib</label>
+            </div>
+            <div class="form-group" style="flex-direction:row;align-items:center;gap:.5rem">
+              <input type="checkbox" name="cancel" id="smm-cancel" style="width:auto">
+              <label for="smm-cancel" style="margin:0">Cancel disponib</label>
+            </div>
+            <div class="form-group" style="flex-direction:row;align-items:center;gap:.5rem">
+              <input type="checkbox" name="dripfeed" id="smm-dripfeed" style="width:auto">
+              <label for="smm-dripfeed" style="margin:0">Dripfeed disponib</label>
+            </div>
+            <div class="form-group">
+              <label>Vitès (opsyonèl)</label>
+              <input type="text" name="speed" placeholder="e.g. 1000/jou">
             </div>
             <div class="form-group form-group--action">
               <label>&nbsp;</label>
@@ -490,15 +597,17 @@
         <div class="card-header"><h3>Tout Sèvis SMM ({{ smm_services|length }})</h3></div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Platfòm</th><th>Tip</th><th>Kantite</th><th>Pri</th><th>Provider ID</th><th>Statis</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Founisè</th><th>Platfòm</th><th>Kategori</th><th>Ran Kantite</th><th>Pri Vann /1000</th><th>Pri Founisè /1000</th><th>Statis</th><th>Actions</th></tr></thead>
             <tbody>
             {% for s in smm_services %}
+            {% set prov = smm_provider_map.get(s.provider_id) %}
             <tr>
+              <td>{{ prov.name if prov else '—' }}</td>
               <td><strong>{{ s.platform }}</strong></td>
-              <td>{{ s.service_type }}</td>
-              <td>{{ s.quantity }}</td>
-              <td>{{ "%.2f"|format(s.price_htg) }} HTG</td>
-              <td class="text-mono text-muted">{{ s.provider_service_id }}</td>
+              <td>{{ s.category }}</td>
+              <td>{{ s.min_quantity }}–{{ s.max_quantity }}</td>
+              <td>{{ "%.2f"|format(s.selling_price_htg) }} HTG</td>
+              <td class="text-muted">${{ "%.4f"|format(s.provider_price_usd or 0) }}</td>
               <td><span class="status-badge status--{{ 'approved' if s.active else 'rejected' }}">{{ 'AKTIF' if s.active else 'DEZAKTIVE' }}</span></td>
               <td>
                 <div class="action-btns">
@@ -512,7 +621,7 @@
               </td>
             </tr>
             {% else %}
-            <tr><td colspan="7" class="text-center text-muted">Pa gen sèvis SMM ankò</td></tr>
+            <tr><td colspan="8" class="text-center text-muted">Pa gen sèvis SMM ankò</td></tr>
             {% endfor %}
             </tbody>
           </table>
@@ -522,25 +631,27 @@
       <div class="card">
         <div class="card-header"><h3>Kòmand SMM Resan ({{ smm_orders|length }})</h3></div>
         <p style="color:var(--text-2);font-size:.8rem;padding:0 1.5rem .5rem">
-          Backend la soumèt lòd "pending" yo bay smmzio.com epi tcheke statis "processing" yo otomatikman chak
-          {{ 20 }} minit — pa gen aksyon manyèl obligatwa isit la, se yon vi jeneral sèlman.
+          Backend la soumèt lòd "pending" yo bay founisè a epi tcheke statis "processing" yo otomatikman
+          chak 20 minit — pa gen aksyon manyèl obligatwa isit la, se yon vi jeneral sèlman.
         </p>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>User</th><th>Kantite</th><th>Pri</th><th>Lyen</th><th>Provider Order ID</th><th>Statis</th><th>Dat</th></tr></thead>
+            <thead><tr><th>User</th><th>Sèvis</th><th>Kantite</th><th>Pri (HTG)</th><th>Kout Founisè ($)</th><th>Provider Order ID</th><th>Statis</th><th>Dat</th></tr></thead>
             <tbody>
             {% for o in smm_orders %}
+            {% set svc = smm_service_map.get(o.get('service_id')) %}
             <tr>
               <td>{{ user_map.get(o.get('user_id'), '—') }}</td>
+              <td>{{ svc.platform if svc else '—' }} — {{ svc.category if svc else '—' }}</td>
               <td>{{ o.get('quantity','—') }}</td>
-              <td>{{ "%.2f"|format(o.get('price_htg',0)) }} HTG</td>
-              <td class="text-mono text-muted">{{ (o.get('link') or '—')[:25] }}</td>
+              <td>{{ "%.2f"|format(o.get('charge_htg',0)) }}</td>
+              <td class="text-muted">${{ "%.4f"|format(o.get('provider_charge_usd') or 0) }}</td>
               <td class="text-mono text-muted">{{ o.get('provider_order_id') or '—' }}</td>
               <td><span class="status-badge status--{{ o.get('status','') }}">{{ o.get('status','').upper() }}</span></td>
               <td class="text-muted">{{ (o.get('created_at') or '')[:16] }}</td>
             </tr>
             {% else %}
-            <tr><td colspan="7" class="text-center text-muted">Pa gen kòmand SMM ankò</td></tr>
+            <tr><td colspan="8" class="text-center text-muted">Pa gen kòmand SMM ankò</td></tr>
             {% endfor %}
             </tbody>
           </table>
