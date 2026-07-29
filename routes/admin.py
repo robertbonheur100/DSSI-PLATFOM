@@ -21,12 +21,6 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-# ─────────────────────────────────────────────
-# Ranplase fonction _get_rates() nan TOUDE fichye:
-#   routes/admin.py   (remplace _get_rates ak _get_rate tou)
-#   routes/dashboard.py  (remplace _get_rates tou)
-# ─────────────────────────────────────────────
-
 def _get_rates(db):
     """
     Li yon sèl ligne exchange_rates epi retounen 3 taux dirèkteman.
@@ -75,6 +69,10 @@ def dashboard():
         htg_wds       = _q(lambda: db.table('htg_withdrawals').select('*').order('created_at', desc=True).execute())
         rates         = _q(lambda: db.table('exchange_rates').select('*').order('created_at', desc=True).limit(20).execute())
 
+        # ── SMM: sèvis + lòd yo ──
+        smm_services = _q(lambda: db.table('smm_services').select('*').order('platform').order('quantity').execute())
+        smm_orders   = _q(lambda: db.table('smm_orders').select('*').order('created_at', desc=True).limit(100).execute())
+
         all_rates    = _get_rates(db)
         current_rate = all_rates['rate_convert']   # backward-compat pou template vye kote
 
@@ -86,6 +84,7 @@ def dashboard():
         pending_buys    = [r for r in buy_requests  if r.get('status') == 'pending']
         pending_sells   = [r for r in sell_requests if r.get('status') == 'pending']
         pending_htg_wds = [w for w in htg_wds       if w.get('status') == 'pending']
+        pending_smm     = [o for o in smm_orders    if o.get('status') in ('pending', 'processing')]
 
         total_balance = sum(float(u.get('balance') or 0) for u in users)
         invested_vol  = sum(float(i.get('amount')  or 0) for i in active_invs)
@@ -114,6 +113,9 @@ def dashboard():
             pending_buys=pending_buys,
             pending_sells=pending_sells,
             pending_htg_wds=pending_htg_wds,
+            smm_services=smm_services,
+            smm_orders=smm_orders,
+            pending_smm=pending_smm,
         )
 
     except Exception as e:
@@ -245,10 +247,6 @@ def adjust_balance():
 # ─────────────────────────────────────────────
 # SET EXCHANGE RATES  (3 tip separe)
 # ─────────────────────────────────────────────
-# ─────────────────────────────────────────────
-# RANPLASE sèlman fonction set_rate() nan admin.py ou a
-# ─────────────────────────────────────────────
-
 @admin_bp.route('/set-rate', methods=['POST'])
 @admin_required
 def set_rate():
@@ -549,6 +547,73 @@ def reactivate_investment(inv_id):
 
     flash(f'Plan "{inv.get("plan_name","—")}" reactivated.', 'success')
     return redirect(url_for('admin.dashboard') + '#tab-investments')
+
+
+# ─────────────────────────────────────────────
+# SMM — ADD / TOGGLE / DELETE SERVICE
+# ─────────────────────────────────────────────
+@admin_bp.route('/smm/service/add', methods=['POST'])
+@admin_required
+def add_smm_service():
+    db  = get_admin_supabase()
+    now = _now()
+
+    try:
+        platform            = request.form.get('platform', '').strip()
+        service_type        = request.form.get('service_type', '').strip()
+        provider_service_id = request.form.get('provider_service_id', '').strip()
+        quantity            = int(request.form.get('quantity', 0))
+        price_htg           = float(request.form.get('price_htg', 0))
+
+        if not platform or not service_type or not provider_service_id or quantity <= 0 or price_htg <= 0:
+            flash('Tout chan yo obligatwa e dwe pi gwo pase zewo.', 'error')
+            return redirect(url_for('admin.dashboard') + '#tab-smm')
+
+        db.table('smm_services').insert({
+            'platform':            platform,
+            'service_type':        service_type,
+            'provider_service_id': provider_service_id,
+            'quantity':            quantity,
+            'price_htg':           price_htg,
+            'active':              True,
+            'created_at':          now,
+        }).execute()
+
+        _log(db, 'add_smm_service', provider_service_id,
+             f'Ajoute sèvis SMM: {platform} {service_type} x{quantity} — {price_htg} HTG', now)
+        flash(f'Sèvis SMM ajoute: {platform} {service_type} x{quantity} pou {price_htg} HTG.', 'success')
+
+    except Exception as e:
+        flash(f'Erè ajoute sèvis: {e}', 'error')
+
+    return redirect(url_for('admin.dashboard') + '#tab-smm')
+
+
+@admin_bp.route('/smm/service/<service_id>/toggle', methods=['POST'])
+@admin_required
+def toggle_smm_service(service_id):
+    db = get_admin_supabase()
+
+    services = _q(lambda: db.table('smm_services').select('*').eq('id', service_id).execute())
+    if not services:
+        flash('Sèvis pa jwenn.', 'error')
+        return redirect(url_for('admin.dashboard') + '#tab-smm')
+
+    service    = services[0]
+    new_active = not service.get('active', True)
+    db.table('smm_services').update({'active': new_active}).eq('id', service_id).execute()
+
+    flash(f"Sèvis {'aktive' if new_active else 'dezaktive'}.", 'success')
+    return redirect(url_for('admin.dashboard') + '#tab-smm')
+
+
+@admin_bp.route('/smm/service/<service_id>/delete', methods=['POST'])
+@admin_required
+def delete_smm_service(service_id):
+    db = get_admin_supabase()
+    db.table('smm_services').delete().eq('id', service_id).execute()
+    flash('Sèvis efase.', 'info')
+    return redirect(url_for('admin.dashboard') + '#tab-smm')
 
 
 def _log(db, action, target_id, details, now):
