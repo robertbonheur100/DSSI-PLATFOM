@@ -69,9 +69,13 @@ def dashboard():
         htg_wds       = _q(lambda: db.table('htg_withdrawals').select('*').order('created_at', desc=True).execute())
         rates         = _q(lambda: db.table('exchange_rates').select('*').order('created_at', desc=True).limit(20).execute())
 
-        # ── SMM: sèvis + lòd yo ──
-        smm_services = _q(lambda: db.table('smm_services').select('*').order('platform').order('quantity').execute())
-        smm_orders   = _q(lambda: db.table('smm_orders').select('*').order('created_at', desc=True).limit(100).execute())
+        # ── SMM: founisè + sèvis + lòd yo ──
+        smm_providers = _q(lambda: db.table('smm_providers').select('*').order('name').execute())
+        smm_services  = _q(lambda: db.table('smm_services').select('*').order('platform').order('category').execute())
+        smm_orders    = _q(lambda: db.table('smm_orders').select('*').order('created_at', desc=True).limit(100).execute())
+
+        smm_provider_map = {p['id']: p for p in smm_providers}
+        smm_service_map  = {s['id']: s for s in smm_services}
 
         all_rates    = _get_rates(db)
         current_rate = all_rates['rate_convert']   # backward-compat pou template vye kote
@@ -113,8 +117,11 @@ def dashboard():
             pending_buys=pending_buys,
             pending_sells=pending_sells,
             pending_htg_wds=pending_htg_wds,
+            smm_providers=smm_providers,
             smm_services=smm_services,
             smm_orders=smm_orders,
+            smm_provider_map=smm_provider_map,
+            smm_service_map=smm_service_map,
             pending_smm=pending_smm,
         )
 
@@ -550,7 +557,60 @@ def reactivate_investment(inv_id):
 
 
 # ─────────────────────────────────────────────
-# SMM — ADD / TOGGLE / DELETE SERVICE
+# SMM — PROVIDERS (smm_providers)
+# ─────────────────────────────────────────────
+@admin_bp.route('/smm/provider/add', methods=['POST'])
+@admin_required
+def add_smm_provider():
+    db  = get_admin_supabase()
+    now = _now()
+
+    try:
+        name     = request.form.get('name', '').strip()
+        api_url  = request.form.get('api_url', '').strip()
+        api_key  = request.form.get('api_key', '').strip()
+        currency = request.form.get('currency', 'USD').strip()
+
+        if not name or not api_url or not api_key:
+            flash('Non, API URL, ak API Key obligatwa.', 'error')
+            return redirect(url_for('admin.dashboard') + '#tab-smm')
+
+        db.table('smm_providers').insert({
+            'name':       name,
+            'api_url':    api_url,
+            'api_key':    api_key,
+            'currency':   currency or 'USD',
+            'active':     True,
+            'created_at': now,
+        }).execute()
+
+        _log(db, 'add_smm_provider', name, f'Ajoute founisè SMM: {name} ({api_url})', now)
+        flash(f'Founisè "{name}" ajoute.', 'success')
+
+    except Exception as e:
+        flash(f'Erè ajoute founisè: {e}', 'error')
+
+    return redirect(url_for('admin.dashboard') + '#tab-smm')
+
+
+@admin_bp.route('/smm/provider/<provider_id>/toggle', methods=['POST'])
+@admin_required
+def toggle_smm_provider(provider_id):
+    db = get_admin_supabase()
+    providers = _q(lambda: db.table('smm_providers').select('*').eq('id', provider_id).execute())
+    if not providers:
+        flash('Founisè pa jwenn.', 'error')
+        return redirect(url_for('admin.dashboard') + '#tab-smm')
+
+    provider   = providers[0]
+    new_active = not provider.get('active', True)
+    db.table('smm_providers').update({'active': new_active}).eq('id', provider_id).execute()
+    flash(f"Founisè {'aktive' if new_active else 'dezaktive'}.", 'success')
+    return redirect(url_for('admin.dashboard') + '#tab-smm')
+
+
+# ─────────────────────────────────────────────
+# SMM — SERVICES (smm_services)
 # ─────────────────────────────────────────────
 @admin_bp.route('/smm/service/add', methods=['POST'])
 @admin_required
@@ -559,29 +619,52 @@ def add_smm_service():
     now = _now()
 
     try:
-        platform            = request.form.get('platform', '').strip()
-        service_type        = request.form.get('service_type', '').strip()
-        provider_service_id = request.form.get('provider_service_id', '').strip()
-        quantity            = int(request.form.get('quantity', 0))
-        price_htg           = float(request.form.get('price_htg', 0))
+        provider_id          = request.form.get('provider_id', '').strip()
+        provider_service_id  = request.form.get('provider_service_id', '').strip()
+        platform             = request.form.get('platform', '').strip()
+        category             = request.form.get('category', '').strip()
+        service_name         = request.form.get('service_name', '').strip()
+        description          = request.form.get('description', '').strip()
+        min_quantity         = int(request.form.get('min_quantity', 0))
+        max_quantity         = int(request.form.get('max_quantity', 0))
+        provider_price_usd   = float(request.form.get('provider_price_usd', 0))
+        selling_price_htg    = float(request.form.get('selling_price_htg', 0))
+        refill               = request.form.get('refill') == 'on'
+        cancel               = request.form.get('cancel') == 'on'
+        dripfeed             = request.form.get('dripfeed') == 'on'
+        speed                = request.form.get('speed', '').strip()
 
-        if not platform or not service_type or not provider_service_id or quantity <= 0 or price_htg <= 0:
-            flash('Tout chan yo obligatwa e dwe pi gwo pase zewo.', 'error')
+        if not provider_id or not provider_service_id or not platform or not category \
+           or min_quantity <= 0 or max_quantity <= 0 or selling_price_htg <= 0:
+            flash('Tout chan obligatwa yo dwe ranpli e kantite/pri dwe pi gwo pase zewo.', 'error')
+            return redirect(url_for('admin.dashboard') + '#tab-smm')
+
+        if max_quantity < min_quantity:
+            flash('Max quantity dwe pi gwo pase min quantity.', 'error')
             return redirect(url_for('admin.dashboard') + '#tab-smm')
 
         db.table('smm_services').insert({
-            'platform':            platform,
-            'service_type':        service_type,
-            'provider_service_id': provider_service_id,
-            'quantity':            quantity,
-            'price_htg':           price_htg,
-            'active':              True,
-            'created_at':          now,
+            'provider_id':          provider_id,
+            'provider_service_id':  provider_service_id,
+            'platform':             platform,
+            'category':             category,
+            'service_name':         service_name or f'{platform} {category}',
+            'description':          description,
+            'min_quantity':         min_quantity,
+            'max_quantity':         max_quantity,
+            'provider_price_usd':   provider_price_usd,
+            'selling_price_htg':    selling_price_htg,
+            'refill':               refill,
+            'cancel':               cancel,
+            'dripfeed':             dripfeed,
+            'speed':                speed,
+            'active':               True,
+            'created_at':           now,
         }).execute()
 
         _log(db, 'add_smm_service', provider_service_id,
-             f'Ajoute sèvis SMM: {platform} {service_type} x{quantity} — {price_htg} HTG', now)
-        flash(f'Sèvis SMM ajoute: {platform} {service_type} x{quantity} pou {price_htg} HTG.', 'success')
+             f'Ajoute sèvis SMM: {platform} {category} ({min_quantity}-{max_quantity}) — {selling_price_htg} HTG/1000', now)
+        flash(f'Sèvis SMM ajoute: {platform} {category}.', 'success')
 
     except Exception as e:
         flash(f'Erè ajoute sèvis: {e}', 'error')
