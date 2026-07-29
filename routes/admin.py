@@ -480,38 +480,44 @@ def suspend_investment(inv_id):
     db  = get_admin_supabase()
     now = _now()
 
-    invs = _q(lambda: db.table('investments').select('*').eq('id', inv_id).execute())
-    if not invs:
-        flash('Investment plan not found.', 'error')
-        return redirect(url_for('admin.dashboard') + '#tab-investments')
+    try:
+        invs = _q(lambda: db.table('investments').select('*').eq('id', inv_id).execute())
+        if not invs:
+            flash('Investment plan not found.', 'error')
+            return redirect(url_for('admin.dashboard') + '#tab-investments')
 
-    inv    = invs[0]
-    uid    = inv.get('user_id')
-    reason = request.form.get('reason', 'Suspended by admin')
+        inv    = invs[0]
+        uid    = inv.get('user_id')
+        reason = request.form.get('reason', 'Suspended by admin')
 
-    if inv.get('status') == 'suspended':
-        flash('Plan deja suspended.', 'info')
-        return redirect(url_for('admin.dashboard') + '#tab-investments')
+        if inv.get('status') == 'suspended':
+            flash('Plan deja suspended.', 'info')
+            return redirect(url_for('admin.dashboard') + '#tab-investments')
 
-    db.table('investments').update({
-        'status':         'suspended',
-        'suspended_at':   now,
-        'suspend_reason': reason,
-    }).eq('id', inv_id).execute()
+        db.table('investments').update({
+            'status':         'suspended',
+            'suspended_at':   now,
+            'suspend_reason': reason,
+        }).eq('id', inv_id).execute()
 
-    db.table('transactions').insert({
-        'user_id':     uid,
-        'type':        'plan_suspended',
-        'amount':      0,
-        'description': f'Plan "{inv.get("plan_name","—")}" suspended — {reason}',
-        'status':      'completed',
-        'created_at':  now,
-    }).execute()
+        db.table('transactions').insert({
+            'user_id':     uid,
+            'type':        'plan_suspended',
+            'amount':      0,
+            'description': f'Plan "{inv.get("plan_name","—")}" suspended — {reason}',
+            'status':      'completed',
+            'created_at':  now,
+        }).execute()
 
-    _log(db, 'suspend_investment', inv_id,
-         f'Suspended plan "{inv.get("plan_name","—")}" for user {uid[:8]} — {reason}', now)
+        _log(db, 'suspend_investment', inv_id,
+             f'Suspended plan "{inv.get("plan_name","—")}" for user {uid[:8]} — {reason}', now)
 
-    flash(f'Plan "{inv.get("plan_name","—")}" suspended.', 'warning')
+        flash(f'Plan "{inv.get("plan_name","—")}" suspended.', 'warning')
+
+    except Exception as e:
+        logger.exception(f'Suspend investment error: {e}')
+        flash(f'Erè suspann plan: {type(e).__name__}: {e}', 'error')
+
     return redirect(url_for('admin.dashboard') + '#tab-investments')
 
 
@@ -521,38 +527,44 @@ def reactivate_investment(inv_id):
     db  = get_admin_supabase()
     now = _now()
 
-    invs = _q(lambda: db.table('investments').select('*').eq('id', inv_id).execute())
-    if not invs:
-        flash('Investment plan not found.', 'error')
-        return redirect(url_for('admin.dashboard') + '#tab-investments')
+    try:
+        invs = _q(lambda: db.table('investments').select('*').eq('id', inv_id).execute())
+        if not invs:
+            flash('Investment plan not found.', 'error')
+            return redirect(url_for('admin.dashboard') + '#tab-investments')
 
-    inv = invs[0]
-    uid = inv.get('user_id')
+        inv = invs[0]
+        uid = inv.get('user_id')
 
-    if inv.get('status') == 'active':
-        flash('Plan deja aktif.', 'info')
-        return redirect(url_for('admin.dashboard') + '#tab-investments')
+        if inv.get('status') == 'active':
+            flash('Plan deja aktif.', 'info')
+            return redirect(url_for('admin.dashboard') + '#tab-investments')
 
-    db.table('investments').update({
-        'status':         'active',
-        'suspended_at':   None,
-        'suspend_reason': None,
-        'reactivated_at': now,
-    }).eq('id', inv_id).execute()
+        db.table('investments').update({
+            'status':         'active',
+            'suspended_at':   None,
+            'suspend_reason': None,
+            'reactivated_at': now,
+        }).eq('id', inv_id).execute()
 
-    db.table('transactions').insert({
-        'user_id':     uid,
-        'type':        'plan_reactivated',
-        'amount':      0,
-        'description': f'Plan "{inv.get("plan_name","—")}" reactivated by admin',
-        'status':      'completed',
-        'created_at':  now,
-    }).execute()
+        db.table('transactions').insert({
+            'user_id':     uid,
+            'type':        'plan_reactivated',
+            'amount':      0,
+            'description': f'Plan "{inv.get("plan_name","—")}" reactivated by admin',
+            'status':      'completed',
+            'created_at':  now,
+        }).execute()
 
-    _log(db, 'reactivate_investment', inv_id,
-         f'Reactivated plan "{inv.get("plan_name","—")}" for user {uid[:8]}', now)
+        _log(db, 'reactivate_investment', inv_id,
+             f'Reactivated plan "{inv.get("plan_name","—")}" for user {uid[:8]}', now)
 
-    flash(f'Plan "{inv.get("plan_name","—")}" reactivated.', 'success')
+        flash(f'Plan "{inv.get("plan_name","—")}" reactivated.', 'success')
+
+    except Exception as e:
+        logger.exception(f'Reactivate investment error: {e}')
+        flash(f'Erè reaktive plan: {type(e).__name__}: {e}', 'error')
+
     return redirect(url_for('admin.dashboard') + '#tab-investments')
 
 
