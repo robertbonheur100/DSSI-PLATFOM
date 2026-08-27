@@ -78,24 +78,24 @@ def activate():
         return redirect(url_for('dashboard.index'))
 
     try:
-        profile_res = db.table('profiles').select('balance').eq('id', uid).execute()
+        profile_res = db.table('profiles').select('balance_htg').eq('id', uid).execute()
 
         if not profile_res.data:
             flash('User profile not found.', 'error')
             return redirect(url_for('dashboard.index'))
 
         profile = profile_res.data[0]
-        balance = float(profile.get('balance') or 0)
+        balance = float(profile.get('balance_htg') or 0)
 
         if balance < plan['amount']:
-            flash(f"Insufficient balance. You need ${plan['amount']} to activate this plan.", 'error')
+            flash(f"Balans ou pa sifi. Ou bezwen {plan['amount']:,} HTG pou aktive plan sa a.", 'error')
             return redirect(url_for('dashboard.index'))
 
         now = datetime.now(timezone.utc)
 
-        # Deduct from balance
+        # Deduct from balance (Goud)
         new_balance = round(balance - plan['amount'], 2)
-        db.table('profiles').update({'balance': new_balance}).eq('id', uid).execute()
+        db.table('profiles').update({'balance_htg': new_balance}).eq('id', uid).execute()
 
         # Create investment record
         db.table('investments').insert({
@@ -116,7 +116,7 @@ def activate():
             'user_id':     uid,
             'type':        'investment',
             'amount':      plan['amount'],
-            'description': f"Activated {plan['name']} Plan (${plan['amount']})",
+            'description': f"Activated {plan['name']} Plan ({plan['amount']:,} HTG)",
             'status':      'completed',
             'created_at':  now.isoformat(),
         }).execute()
@@ -124,7 +124,7 @@ def activate():
         # NOTE: Referral commission intentionally removed here.
         # Commission is paid ONLY on deposit/recharge — see deposit route.
 
-        flash(f"{plan['name']} Plan activated! You will earn 2% daily.", 'success')
+        flash(f"Plan {plan['name']} aktive! Ou ap touche 7% chak mwa.", 'success')
 
     except Exception as e:
         flash(f'Activation error: {e}', 'error')
