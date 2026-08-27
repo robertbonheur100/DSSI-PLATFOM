@@ -1,14 +1,23 @@
 """
 Investments blueprint — activate plans, referral commission engine.
 URL prefix: /investments
+
+Plan model: 7% profit credited to the user's balance every month,
+for 3 months. At the end of the 3rd month, the principal (the amount
+the user invested) is credited back to the balance along with the
+final month's interest, so the plan is fully closed out and the user
+is free to reinvest.
 """
 from datetime import datetime, timezone
+from dateutil.relativedelta import relativedelta
 from flask import Blueprint, request, redirect, url_for, session, flash
 from config import Config
 from utils.supabase_client import get_admin_supabase
 from utils.helpers import login_required
 
 investments_bp = Blueprint('investments', __name__)
+
+TERM_MONTHS = 3
 
 
 # ── Referral commission helper ────────────────────────────────────────────────
@@ -77,6 +86,10 @@ def activate():
         flash('Invalid investment plan.', 'error')
         return redirect(url_for('dashboard.index'))
 
+    # 7%/mwa pou tout plan yo. Si Config gen yon 'monthly_rate' pwòp pou plan
+    # sa a, itilize li; sinon defo a se 7% (0.07).
+    monthly_rate = plan.get('monthly_rate', 0.07)
+
     try:
         profile_res = db.table('profiles').select('balance_htg').eq('id', uid).execute()
 
@@ -92,6 +105,7 @@ def activate():
             return redirect(url_for('dashboard.index'))
 
         now = datetime.now(timezone.utc)
+        matures_at = now + relativedelta(months=TERM_MONTHS)
 
         # Deduct from balance (Goud)
         new_balance = round(balance - plan['amount'], 2)
@@ -103,10 +117,13 @@ def activate():
             'plan_id':          plan_id,
             'plan_name':        plan['name'],
             'amount':           plan['amount'],
-            'daily_rate':       plan['daily_rate'],
+            'monthly_rate':     monthly_rate,
+            'term_months':      TERM_MONTHS,
+            'months_paid':      0,
             'status':           'active',
             'start_date':       now.isoformat(),
             'last_profit_date': None,
+            'matures_at':       matures_at.isoformat(),
             'total_earned':     0.0,
             'created_at':       now.isoformat(),
         }).execute()
@@ -116,7 +133,7 @@ def activate():
             'user_id':     uid,
             'type':        'investment',
             'amount':      plan['amount'],
-            'description': f"Activated {plan['name']} Plan ({plan['amount']:,} HTG)",
+            'description': f"Activated {plan['name']} Plan ({plan['amount']:,} HTG) — 7% chak mwa pandan 3 mwa",
             'status':      'completed',
             'created_at':  now.isoformat(),
         }).execute()
@@ -124,7 +141,8 @@ def activate():
         # NOTE: Referral commission intentionally removed here.
         # Commission is paid ONLY on deposit/recharge — see deposit route.
 
-        flash(f"Plan {plan['name']} aktive! Ou ap touche 7% chak mwa.", 'success')
+        flash(f"Plan {plan['name']} aktive! Ou ap touche 7% chak mwa pandan 3 mwa. "
+              f"Lè 3 mwa yo pase, kapital ou a ap retounen tounen sou balans ou.", 'success')
 
     except Exception as e:
         flash(f'Activation error: {e}', 'error')
