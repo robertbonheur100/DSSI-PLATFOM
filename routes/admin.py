@@ -140,6 +140,11 @@ def dashboard():
 
 # ─────────────────────────────────────────────
 # DEPOSIT APPROVE / REJECT
+# NOTE: Depo a soumèt an USDT, men kounye a li kredite dirèkteman
+# nan balance_htg (balans prensipal la), konvèti ak rate_convert
+# (menm to admin itilize pou Convert USDT↔HTG la).
+# Komisyon referal la rete kalkile sou montan USDT orijinal la,
+# e toujou kredite nan `balance` (USDT) — pa gen chanjman la.
 # ─────────────────────────────────────────────
 @admin_bp.route('/deposit/<deposit_id>/<action>', methods=['POST'])
 @admin_required
@@ -153,25 +158,29 @@ def handle_deposit(deposit_id, action):
         flash('Deposit not found.', 'error')
         return redirect(url_for('admin.dashboard'))
 
-    dep    = deps[0]
-    uid    = dep.get('user_id')
-    amount = float(dep.get('amount') or 0)
+    dep         = deps[0]
+    uid         = dep.get('user_id')
+    amount_usdt = float(dep.get('amount') or 0)
 
     if action == 'approve':
-        profs   = _q(lambda: db.table('profiles').select('balance').eq('id', uid).execute())
-        balance = float(profs[0].get('balance') or 0) if profs else 0.0
-        db.table('profiles').update({'balance': round(balance + amount, 2)}).eq('id', uid).execute()
+        rate       = _get_rates(db)['rate_convert']
+        amount_htg = round(amount_usdt * rate, 2)
+
+        profs   = _q(lambda: db.table('profiles').select('balance_htg').eq('id', uid).execute())
+        bal_htg = float(profs[0].get('balance_htg') or 0) if profs else 0.0
+        db.table('profiles').update({'balance_htg': round(bal_htg + amount_htg, 2)}).eq('id', uid).execute()
+
         db.table('deposits').update({'status': 'approved', 'reviewed_at': now}).eq('id', deposit_id).execute()
         db.table('transactions').insert({
-            'user_id': uid, 'type': 'deposit', 'amount': amount,
-            'description': f'Deposit approved — ${amount} via {dep.get("network","N/A")}',
+            'user_id': uid, 'type': 'deposit', 'amount': amount_usdt,
+            'description': f'Deposit approved — ${amount_usdt} USDT via {dep.get("network","N/A")} → {amount_htg} HTG @ {rate}',
             'status': 'completed', 'created_at': now,
         }).execute()
         try:
-            pay_referral_commissions(db, uid, amount, tx_type='deposit')
+            pay_referral_commissions(db, uid, amount_usdt, tx_type='deposit')
         except Exception as e:
             logger.error(f'Referral commission error: {e}')
-        flash(f'Deposit of ${amount} approved and credited.', 'success')
+        flash(f'Deposit of ${amount_usdt} USDT approved — {amount_htg} HTG credited.', 'success')
 
     elif action == 'reject':
         db.table('deposits').update({'status': 'rejected', 'reviewed_at': now}).eq('id', deposit_id).execute()
