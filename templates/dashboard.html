@@ -113,11 +113,11 @@
           <div class="inv-item">
             <div class="inv-badge">{{ inv.plan_name }}</div>
             <div class="inv-details">
-              <span class="inv-amount">${{ "%.2f"|format(inv.amount) }}</span>
-              <span class="inv-rate">+2%/day</span>
+              <span class="inv-amount">{{ "{:,.0f}".format(inv.amount) }} HTG</span>
+              <span class="inv-rate">+7%/mwa</span>
             </div>
             <div class="inv-meta">
-              <span class="inv-earned">Earned: ${{ "%.2f"|format(inv.total_earned or 0) }}</span>
+              <span class="inv-earned">Earned: {{ "{:,.2f}".format(inv.total_earned or 0) }} HTG</span>
               <span class="status-badge status--{{ inv.status }}">{{ inv.status.upper() }}</span>
             </div>
           </div>
@@ -246,7 +246,7 @@
     <section class="tab-section" id="tab-investments">
       <div class="section-intro">
         <h2>Investment Plans</h2>
-        <p>Activate a plan and earn <strong>2% daily profit</strong> every 24 hours automatically.</p>
+        <p>Aktive yon plan epi touche <strong>7% enterè chak mwa</strong> pandan 3 mwa. Nan fen 3 mwa yo, ni kapital ou (lajan ou te envesti a) ni enterè yo tout monte sou balans ou — ou ka re-envesti yo ankò lè sa a.</p>
       </div>
       <div class="plans-grid">
         {% for pid, plan in plans.items() %}
@@ -254,25 +254,26 @@
           {% if pid == 3 %}<div class="plan-badge">POPULAR</div>{% endif %}
           <div class="plan-tier">Plan {{ pid }}</div>
           <div class="plan-name">{{ plan.name }}</div>
-          <div class="plan-amount">${{ plan.amount }}</div>
+          <div class="plan-amount">{{ "{:,.0f}".format(plan.amount) }} HTG</div>
           <div class="plan-rate">
-            <span class="rate-num">2%</span>
-            <span class="rate-label">Daily Profit</span>
+            <span class="rate-num">7%</span>
+            <span class="rate-label">Monthly Profit</span>
           </div>
-          <div class="plan-daily">${{ "%.2f"|format(plan.amount * 0.02) }}/day</div>
+          <div class="plan-daily">{{ "{:,.2f}".format(plan.amount * 0.07) }} HTG/mwa</div>
           <form method="POST" action="{{ url_for('investments.activate') }}">
             <input type="hidden" name="plan_id" value="{{ pid }}">
             <button type="submit" class="btn btn--primary btn--full"
-              onclick="return confirm('Activate {{ plan.name }} Plan for ${{ plan.amount }}?')">
-              Activate — ${{ plan.amount }}
+              onclick="return confirm('Activate {{ plan.name }} Plan pou {{ '{:,.0f}'.format(plan.amount) }} HTG?')">
+              Activate — {{ "{:,.0f}".format(plan.amount) }} HTG
             </button>
           </form>
         </div>
         {% endfor %}
       </div>
       <div class="info-box">
-        ⚡ <strong>How it works:</strong> Plan cost is deducted from your balance on activation.
-        Profits are credited automatically every 24 hours.
+        ⚡ <strong>Kijan li fonksyone:</strong> Kòb plan an retire nan balans HTG ou lè ou aktive li.
+        Chak mwa, pandan 3 mwa, ou resevwa 7% enterè kredite otomatikman sou balans ou.
+        Lè 3 mwa yo fin pase, kapital ou a (lajan ou te mete a) ajoute tounen sou balans ou tou, an menm tan ak dènye enterè a — pou ou ka re-envesti li si ou vle.
       </div>
     </section>
 
