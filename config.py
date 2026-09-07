@@ -16,21 +16,18 @@ class Config:
     ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL',    'bonheurrobert701@gmail.com')
     ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Aaa111@@@')
     # ── Platform ───────────────────────────────────────────────
-    # NOTE: pwofi kounye a peye chak MWA (pa chak jou). Non "DAILY_PROFIT_RATE"
-    # ak kle "daily_rate" nan INVESTMENT_PLANS kenbe menm non yo pou nou pa
-    # oblije modifye kolòn ki deja egziste nan tab Supabase `investments`,
-    # men valè yo se kounye a yon TO MANSYÈL (7% chak 30 jou).
-    DAILY_PROFIT_RATE = 0.07   # <- reyèlman se to mansyèl la kounye a (7%)
-    REFERRAL_L1_RATE  = 0.05
-    REFERRAL_L2_RATE  = 0.02
+    # Pwofi peye chak MWA. To mansyèl la se 15% pou tout plan yo.
+    MONTHLY_PROFIT_RATE = 0.15
+    REFERRAL_L1_RATE    = 0.05
+    REFERRAL_L2_RATE    = 0.02
     INVESTMENT_PLANS = {
-        0: {'name': 'Mini',     'amount': 5000,    'daily_rate': 0.07},
-        1: {'name': 'Starter',  'amount': 10000,   'daily_rate': 0.07},
-        2: {'name': 'Basic',    'amount': 20000,   'daily_rate': 0.07},
-        3: {'name': 'Standard', 'amount': 50000,   'daily_rate': 0.07},
-        4: {'name': 'Pro',      'amount': 100000,  'daily_rate': 0.07},
-        5: {'name': 'VIP',      'amount': 500000,  'daily_rate': 0.07},
-        6: {'name': 'Elite',    'amount': 1000000, 'daily_rate': 0.07},
+        0: {'name': 'Mini',     'amount': 5000,    'monthly_rate': 0.15},
+        1: {'name': 'Starter',  'amount': 10000,   'monthly_rate': 0.15},
+        2: {'name': 'Basic',    'amount': 20000,   'monthly_rate': 0.15},
+        3: {'name': 'Standard', 'amount': 50000,   'monthly_rate': 0.15},
+        4: {'name': 'Pro',      'amount': 100000,  'monthly_rate': 0.15},
+        5: {'name': 'VIP',      'amount': 500000,  'monthly_rate': 0.15},
+        6: {'name': 'Elite',    'amount': 1000000, 'monthly_rate': 0.15},
     }
     USDT_TRC20_ADDRESS = 'TNjKythwpkcPQo5XwckeBC4ZyeKZf7HaJ2'
     USDT_BEP20_ADDRESS = '0x2ba88a4d6cabaded5d06c75ef3b3efec386acaef'
